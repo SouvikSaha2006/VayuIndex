@@ -1,53 +1,70 @@
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import Route, AirfareObservation, CPIAugmentationIndex
+from .models import Airport, FlightRoute, FareObservation, DailyCPIIndex
 
 
-class RouteSerializer(serializers.ModelSerializer):
+class AirportSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Route
+        model = Airport
         fields = "__all__"
 
 
-class AirfareObservationSerializer(serializers.ModelSerializer):
+class FlightRouteSerializer(serializers.ModelSerializer):
+    route_name = serializers.CharField(source="__str__", read_only=True)
+    origin_details = AirportSerializer(source="origin", read_only=True)
+    destination_details = AirportSerializer(source="destination", read_only=True)
+
+    class Meta:
+        model = FlightRoute
+        fields = "__all__"
+
+
+class FareObservationSerializer(serializers.ModelSerializer):
     route_code = serializers.CharField(source="route.__str__", read_only=True)
 
     class Meta:
-        model = AirfareObservation
+        model = FareObservation
         fields = "__all__"
 
 
-class CPIAugmentationIndexSerializer(serializers.ModelSerializer):
+class DailyCPIIndexSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CPIAugmentationIndex
+        model = DailyCPIIndex
         fields = "__all__"
 
 
-class RouteViewSet(viewsets.ModelViewSet):
-    queryset = Route.objects.all()
-    serializer_class = RouteSerializer
+class AirportViewSet(viewsets.ModelViewSet):
+    queryset = Airport.objects.all()
+    serializer_class = AirportSerializer
 
 
-class AirfareObservationViewSet(viewsets.ModelViewSet):
-    queryset = AirfareObservation.objects.all()
-    serializer_class = AirfareObservationSerializer
+class FlightRouteViewSet(viewsets.ModelViewSet):
+    queryset = FlightRoute.objects.select_related("origin", "destination").all()
+    serializer_class = FlightRouteSerializer
 
 
-class CPIAugmentationIndexViewSet(viewsets.ModelViewSet):
-    queryset = CPIAugmentationIndex.objects.all()
-    serializer_class = CPIAugmentationIndexSerializer
+class FareObservationViewSet(viewsets.ModelViewSet):
+    queryset = FareObservation.objects.select_related("route__origin", "route__destination").all()
+    serializer_class = FareObservationSerializer
+
+
+class DailyCPIIndexViewSet(viewsets.ModelViewSet):
+    queryset = DailyCPIIndex.objects.all()
+    serializer_class = DailyCPIIndexSerializer
 
 
 @api_view(["GET"])
 def api_status_view(request):
-    """API Root status and metadata view."""
+    """API Root discovery and status endpoint."""
     return Response(
         {
-            "system": "VayuIndex Domestic Indian Airfare & CPI Engine",
+            "service": "VayuIndex API",
+            "description": "Domestic Indian Airfare Volatility & CPI Augmentation Engine",
             "version": "1.0.0",
             "status": "operational",
             "endpoints": {
+                "airports": "/api/airports/",
                 "routes": "/api/routes/",
                 "fares": "/api/fares/",
                 "cpi-indices": "/api/cpi-indices/",
