@@ -6,6 +6,8 @@ import statistics
 from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APITestCase
 
 from indexer.models import Airport, DailyCPIIndex, FareObservation, FlightRoute
 from indexer.services import compute_daily_airfare_index, ingest_simulated_scraped_fares
@@ -235,3 +237,231 @@ class SeedRoutesCommandTests(TestCase):
         self.assertIn("Successfully seeded 6 major metro airports", output)
         self.assertIn("Skipping simulated fare ingestion", output)
         self.assertEqual(FareObservation.objects.count(), 0)
+
+
+class AirportAPITests(APITestCase):
+    def setUp(self):
+        self.del_apt = Airport.objects.create(iata_code="DEL", city_name="Delhi")
+        self.bom_apt = Airport.objects.create(iata_code="BOM", city_name="Mumbai")
+
+    def test_list_airports(self):
+        response = self.client.get("/api/airports/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Handles both paginated and non-paginated responses
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 2)
+        iata_codes = [a["iata_code"] for a in results]
+        self.assertIn("DEL", iata_codes)
+        self.assertIn("BOM", iata_codes)
+
+    def test_create_airport(self):
+        payload = {
+            "iata_code": "BLR",
+            "city_name": "Bengaluru",
+            "metro_tier": Airport.MetroTier.TIER_1,
+        }
+        response = self.client.post("/api/airports/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Airport.objects.count(), 3)
+        self.assertEqual(response.data["iata_code"], "BLR")
+
+
+class FlightRouteAPITests(APITestCase):
+    def setUp(self):
+        self.del_apt = Airport.objects.create(iata_code="DEL", city_name="Delhi")
+        self.bom_apt = Airport.objects.create(iata_code="BOM", city_name="Mumbai")
+        self.blr_apt = Airport.objects.create(iata_code="BLR", city_name="Bengaluru")
+
+        self.route1 = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=self.bom_apt,
+            passenger_traffic_weight=1.5,
+            base_benchmark_fare=Decimal("4500.00"),
+        )
+        self.route2 = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=self.blr_apt,
+            passenger_traffic_weight=1.0,
+            base_benchmark_fare=Decimal("5000.00"),
+        )
+
+        today = timezone.localdate()
+        # Seed fares for route 1: [5000, 6000] -> Avg = 5500.00
+        FareObservation.objects.create(
+            route=self.route1,
+            carrier=FareObservation.Carrier.INDIGO,
+            source_portal=FareObservation.SourcePortal.DIRECT,
+            observed_price_inr=Decimal("5000.00"),
+            departure_date=today + timedelta(days=7),
+            advance_booking_days=7,
+        )
+        FareObservation.objects.create(
+            route=self.route1,
+            carrier=FareObservation.Carrier.AIRINDIA,
+            source_portal=FareObservation.SourcePortal.MAKEMYTRIP,
+            observed_price_inr=Decimal("6000.00"),
+            departure_date=today + timedelta(days=7),
+            advance_booking_days=7,
+        )
+
+    def test_list_routes_dynamic_fields(self):
+        response = self.client.get("/api/routes/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 2)
+
+        # Route 1: DEL -> BOM
+        route1_data = next(r for r in results if r["id"] == self.route1.id)
+        self.assertEqual(route1_data["origin_code"], "DEL")
+        self.assertEqual(route1_data["origin_city"], "Delhi")
+        self.assertEqual(route1_data["destination_code"], "BOM")
+        self.assertEqual(route1_data["destination_city"], "Mumbai")
+        self.assertAlmostEqual(route1_data["current_avg_fare"], 5500.00, places=2)
+
+        # Route 2: DEL -> BLR (no observations, falls back to base_benchmark_fare)
+        route2_data = next(r for r in results if r["id"] == self.route2.id)
+        self.assertEqual(route2_data["origin_code"], "DEL")
+        self.assertEqual(route2_data["destination_code"], "BLR")
+        self.assertAlmostEqual(route2_data["current_avg_fare"], 5000.00, places=2)
+
+
+class FareObservationAPITests(APITestCase):
+    def setUp(self):
+        self.del_apt = Airport.objects.create(iata_code="DEL", city_name="Delhi")
+        self.bom_apt = Airport.objects.create(iata_code="BOM", city_name="Mumbai")
+        self.route = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=self.bom_apt,
+            passenger_traffic_weight=1.0,
+            base_benchmark_fare=Decimal("4500.00"),
+        )
+        self.other_route = FlightRoute.objects.create(
+            origin=self.bom_apt,
+            destination=self.del_apt,
+            passenger_traffic_weight=1.0,
+            base_benchmark_fare=Decimal("4500.00"),
+        )
+
+        today = timezone.localdate()
+        self.obs1 = FareObservation.objects.create(
+            route=self.route,
+            carrier=FareObservation.Carrier.INDIGO,
+            source_portal=FareObservation.SourcePortal.DIRECT,
+            observed_price_inr=Decimal("5400.00"),
+            departure_date=today + timedelta(days=7),
+            advance_booking_days=7,
+        )
+        self.obs2 = FareObservation.objects.create(
+            route=self.other_route,
+            carrier=FareObservation.Carrier.AIRINDIA,
+            source_portal=FareObservation.SourcePortal.MAKEMYTRIP,
+            observed_price_inr=Decimal("6200.50"),
+            departure_date=today + timedelta(days=14),
+            advance_booking_days=14,
+        )
+
+    def test_list_fares_representation_and_currency(self):
+        response = self.client.get("/api/fares/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 2)
+
+        item = next(x for x in results if x["id"] == self.obs1.id)
+        self.assertIn("DEL -> BOM", item["route_str"])
+        self.assertIn("₹5,400.00", item["formatted_price"])
+        self.assertIn("₹5,400.00", item["formatted_currency"])
+
+    def test_filter_fares_by_carrier(self):
+        # Case insensitive carrier filter
+        response = self.client.get("/api/fares/?carrier=indigo")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["carrier"], "INDIGO")
+
+    def test_filter_fares_by_route(self):
+        response = self.client.get(f"/api/fares/?route={self.route.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], self.obs1.id)
+
+    def test_trigger_ingestion_action(self):
+        initial_count = FareObservation.objects.count()
+        response = self.client.post(
+            "/api/fares/trigger-ingestion/",
+            {"seed": 99, "use_median": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "success")
+        self.assertGreater(response.data["record_count"], 0)
+        self.assertGreater(FareObservation.objects.count(), initial_count)
+        self.assertIn("updated_index_value", response.data)
+
+
+class CPIIndexAPITests(APITestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        self.rec1 = DailyCPIIndex.objects.create(
+            calculation_date=today - timedelta(days=2),
+            laspeyres_index_value=100.0,
+            inflation_rate_mom=0.0,
+            total_observations_analyzed=10,
+        )
+        self.rec2 = DailyCPIIndex.objects.create(
+            calculation_date=today - timedelta(days=1),
+            laspeyres_index_value=103.5,
+            inflation_rate_mom=3.5,
+            total_observations_analyzed=15,
+        )
+        self.rec3 = DailyCPIIndex.objects.create(
+            calculation_date=today,
+            laspeyres_index_value=107.0,
+            inflation_rate_mom=3.38,
+            total_observations_analyzed=20,
+        )
+
+    def test_list_cpi_indices_descending_order(self):
+        response = self.client.get("/api/cpi-indices/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 3)
+
+        dates = [r["calculation_date"] for r in results]
+        self.assertEqual(
+            dates,
+            [
+                self.rec3.calculation_date.isoformat(),
+                self.rec2.calculation_date.isoformat(),
+                self.rec1.calculation_date.isoformat(),
+            ],
+        )
+
+    def test_latest_action(self):
+        response = self.client.get("/api/cpi-indices/latest/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["calculation_date"], self.rec3.calculation_date.isoformat())
+        self.assertAlmostEqual(response.data["laspeyres_index_value"], 107.0, places=1)
+
+    def test_latest_action_when_empty(self):
+        DailyCPIIndex.objects.all().delete()
+        response = self.client.get("/api/cpi-indices/latest/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class APIRootDiscoveryTests(APITestCase):
+    def test_root_health_check(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["status"], "healthy")
+
+    def test_api_status_view(self):
+        response = self.client.get("/api/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "operational")
+        self.assertIn("endpoints", response.data)
+        self.assertIn("routes", response.data["endpoints"])
+        self.assertIn("cpi_indices_latest", response.data["endpoints"])
+
+

@@ -1,20 +1,29 @@
-from django.urls import path, include
+"""
+URL Routing configuration for VayuIndex indexer application.
+
+Configures REST framework DefaultRouter for airports, flight routes,
+fare observations, and Laspeyres CPI index time-series endpoints.
+"""
+
+from typing import List
+from django.urls import URLPattern, URLResolver, include, path
 from rest_framework.routers import DefaultRouter
+
 from .views import (
     AirportViewSet,
-    FlightRouteViewSet,
+    CPIIndexViewSet,
     FareObservationViewSet,
-    DailyCPIIndexViewSet,
+    RouteViewSet,
     api_status_view,
 )
 
 router = DefaultRouter()
 router.register(r"airports", AirportViewSet, basename="airport")
-router.register(r"routes", FlightRouteViewSet, basename="route")
+router.register(r"routes", RouteViewSet, basename="route")
 router.register(r"fares", FareObservationViewSet, basename="fare")
-router.register(r"cpi-indices", DailyCPIIndexViewSet, basename="cpi-index")
+router.register(r"cpi-indices", CPIIndexViewSet, basename="cpi-index")
 
-urlpatterns = [
+urlpatterns: List[URLPattern | URLResolver] = [
     path("", api_status_view, name="api-root-status"),
     path("", include(router.urls)),
 ]
