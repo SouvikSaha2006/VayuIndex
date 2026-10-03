@@ -465,3 +465,135 @@ class APIRootDiscoveryTests(APITestCase):
         self.assertIn("cpi_indices_latest", response.data["endpoints"])
 
 
+class AdminControlCenterTests(TestCase):
+    def setUp(self):
+        from django.contrib.admin.sites import AdminSite
+        from django.test import RequestFactory
+        from django.contrib.messages.storage.fallback import FallbackStorage
+
+        self.site = AdminSite()
+        self.factory = RequestFactory()
+
+        self.del_apt = Airport.objects.create(iata_code="DEL", city_name="Delhi")
+        self.bom_apt = Airport.objects.create(iata_code="BOM", city_name="Mumbai")
+        self.route = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=self.bom_apt,
+            passenger_traffic_weight=2.0,
+            base_benchmark_fare=Decimal("5000.00"),
+        )
+
+    def _get_request_with_messages(self):
+        from django.test import RequestFactory
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+
+        request = self.factory.get("/")
+        # Setup session and message storage
+        middleware = SessionMiddleware(lambda req: None)
+        middleware.process_request(request)
+        request.session.save()
+        messages = FallbackStorage(request)
+        setattr(request, "_messages", messages)
+        return request
+
+    def test_airport_admin_configuration(self):
+        from indexer.admin import AirportAdmin
+
+        model_admin = AirportAdmin(Airport, self.site)
+        self.assertEqual(
+            model_admin.list_display,
+            ("iata_code", "city_name", "metro_tier"),
+        )
+        self.assertEqual(model_admin.search_fields, ("iata_code", "city_name"))
+        self.assertEqual(model_admin.list_filter, ("metro_tier",))
+
+    def test_flight_route_admin_configuration_and_action(self):
+        from indexer.admin import FlightRouteAdmin
+
+        model_admin = FlightRouteAdmin(FlightRoute, self.site)
+        self.assertEqual(
+            model_admin.list_display,
+            ("origin", "destination", "passenger_traffic_weight", "base_benchmark_fare"),
+        )
+        self.assertEqual(model_admin.list_editable, ("passenger_traffic_weight",))
+        self.assertIn("origin__iata_code", model_admin.search_fields)
+        self.assertIn("recalculate_cpi_index_now", model_admin.actions)
+
+        # Execute custom admin action
+        request = self._get_request_with_messages()
+        queryset = FlightRoute.objects.filter(id=self.route.id)
+        model_admin.recalculate_cpi_index_now(request, queryset)
+
+        # Check CPI Index record exists
+        today = timezone.localdate()
+        self.assertTrue(DailyCPIIndex.objects.filter(calculation_date=today).exists())
+
+    def test_fare_observation_admin_configuration(self):
+        from indexer.admin import FareObservationAdmin
+
+        model_admin = FareObservationAdmin(FareObservation, self.site)
+        self.assertEqual(
+            model_admin.list_display,
+            (
+                "route",
+                "carrier",
+                "source_portal",
+                "observed_price_inr",
+                "departure_date",
+                "scraped_at",
+            ),
+        )
+        self.assertEqual(model_admin.list_filter, ("carrier", "source_portal"))
+        self.assertEqual(model_admin.date_hierarchy, "scraped_at")
+
+    def test_daily_cpi_index_admin_colored_badges(self):
+        from indexer.admin import DailyCPIIndexAdmin
+
+        model_admin = DailyCPIIndexAdmin(DailyCPIIndex, self.site)
+        self.assertEqual(
+            model_admin.list_display,
+            (
+                "calculation_date",
+                "laspeyres_index_value",
+                "inflation_rate_mom",
+                "total_observations_analyzed",
+            ),
+        )
+
+        today = timezone.localdate()
+        # Test positive inflation rate -> Red badge
+        pos_record = DailyCPIIndex(
+            calculation_date=today,
+            laspeyres_index_value=105.5,
+            inflation_rate_mom=5.50,
+            total_observations_analyzed=50,
+        )
+        pos_badge = model_admin.inflation_rate_mom(pos_record)
+        self.assertIn("#dc2626", pos_badge)
+        self.assertIn("+5.50%", pos_badge)
+
+        # Test negative inflation rate -> Green badge
+        neg_record = DailyCPIIndex(
+            calculation_date=today,
+            laspeyres_index_value=96.2,
+            inflation_rate_mom=-3.80,
+            total_observations_analyzed=50,
+        )
+        neg_badge = model_admin.inflation_rate_mom(neg_record)
+        self.assertIn("#16a34a", neg_badge)
+        self.assertIn("-3.80%", neg_badge)
+
+        # Test zero inflation rate -> Neutral badge
+        zero_record = DailyCPIIndex(
+            calculation_date=today,
+            laspeyres_index_value=100.0,
+            inflation_rate_mom=0.0,
+            total_observations_analyzed=50,
+        )
+        zero_badge = model_admin.inflation_rate_mom(zero_record)
+        self.assertIn("#4b5563", zero_badge)
+        self.assertIn("0.00%", zero_badge)
+
+
+
