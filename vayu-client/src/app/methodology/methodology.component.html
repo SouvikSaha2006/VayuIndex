@@ -1,0 +1,132 @@
+<div class="methodology-container">
+  <!-- Hero Section -->
+  <header class="methodology-hero">
+    <div class="badge">Academic & Economic Methodology</div>
+    <h1>Laspeyres Price Index Formulation & CPI Augmentation Engine</h1>
+    <p>
+      Statistical formulation, traffic weighting schemas, and price relative methodology augmenting the
+      official Indian Consumer Price Index (CPI) transport inflation subgroup.
+    </p>
+  </header>
+
+  <!-- Formula Box Section -->
+  <section class="card-section formula-card">
+    <h2>1. Mathematical Formulation (Laspeyres Price Index)</h2>
+    <p>
+      VayuIndex computes the daily airfare price index using the standard <strong>Laspeyres Price Index formula</strong>
+      weighted by fixed base-period passenger traffic weights (W<sub>i</sub>) across top Indian domestic trunk corridors:
+    </p>
+
+    <div class="math-box">
+      <div class="formula-title">DAILY AIRFARE LASPEYRES INDEX FORMULA</div>
+      <div class="formula-latex">
+        I<sub>t</sub> = [ &sum;(P<sub>i,t</sub> &middot; W<sub>i</sub>) / &sum;(P<sub>i,0</sub> &middot; W<sub>i</sub>) ] &times; 100
+      </div>
+    </div>
+
+    <div class="formula-variables">
+      <div class="var-item">
+        <span class="symbol">I<sub>t</sub></span>
+        <span class="desc">Computed Laspeyres Airfare Index value for day t (Base = 100.00).</span>
+      </div>
+      <div class="var-item">
+        <span class="symbol">P<sub>i,t</sub></span>
+        <span class="desc">Median observed one-way fare for trunk route corridor i on date t.</span>
+      </div>
+      <div class="var-item">
+        <span class="symbol">P<sub>i,0</sub></span>
+        <span class="desc">Calibrated base benchmark baseline fare for trunk route corridor i in INR.</span>
+      </div>
+      <div class="var-item">
+        <span class="symbol">W<sub>i</sub></span>
+        <span class="desc">Passenger traffic weight assigned to route i derived from DGCA annual seat capacity distribution.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CPI Augmentation Explanation -->
+  <section class="card-section">
+    <h2>2. Why Airfares Matter for National CPI Inflation Tracking</h2>
+    <p>
+      In the official Consumer Price Index (CPI) published by the Ministry of Statistics and Programme Implementation (MOSPI),
+      transport and communication represent a significant weight in urban household expenditure.
+    </p>
+    <div class="highlights-grid">
+      <div class="highlight-item">
+        <div class="icon">📈</div>
+        <h3>High Fare Volatility</h3>
+        <p>Dynamic airline yield management algorithms cause fares to fluctuate up to 300% close to departure dates.</p>
+      </div>
+      <div class="highlight-item">
+        <div class="icon">⚡</div>
+        <h3>Real-time Signal vs Lagged Data</h3>
+        <p>Traditional CPI surveys lag by 30-45 days. VayuIndex provides daily high-frequency real-time inflation signals.</p>
+      </div>
+      <div class="highlight-item">
+        <div class="icon">🎯</div>
+        <h3>Basket Weight Calibration</h3>
+        <p>Fixed base weights prevent distorted spikes from low-volume regional routes while giving true weight to heavy metro trunks.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Route Weights Table -->
+  <section class="card-section">
+    <h2>3. Domestic Indian Trunk Basket Calibration Table</h2>
+    <p>
+      The statistical basket monitors major Indian high-density corridors connecting Tier-1 metro hubs:
+    </p>
+
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>Corridor Code</th>
+              <th>City Pair</th>
+              <th>Traffic Weight (W<sub>i</sub>)</th>
+              <th>Base Benchmark (P<sub>i,0</sub>)</th>
+              <th>Hub Classification</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of corridorWeights">
+              <td>
+                <span class="corridor-code">{{ item.origin }} &rarr; {{ item.destination }}</span>
+              </td>
+              <td>{{ item.route }}</td>
+              <td><strong>{{ item.weight }}</strong></td>
+              <td>{{ item.benchmark }}</td>
+              <td><span class="badge badge-info">{{ item.tier }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Yield Management Curves -->
+  <section class="card-section">
+    <h2>4. Advance Booking Horizon Multipliers (Yield Management)</h2>
+    <p>
+      Airline revenue management algorithms segment prices by advance booking windows:
+    </p>
+    <div class="horizon-info-grid">
+      <div class="info-card">
+        <span class="days">21 Days Out</span>
+        <span class="mult">0.88x Baseline</span>
+        <p>Early bird inventory release / lower fares</p>
+      </div>
+      <div class="info-card">
+        <span class="days">14 Days Out</span>
+        <span class="mult">1.02x Baseline</span>
+        <p>Standard demand window baseline</p>
+      </div>
+      <div class="info-card">
+        <span class="days">7 Days Out</span>
+        <span class="mult">1.28x Baseline</span>
+        <p>Close-in corporate booking surge</p>
+      </div>
+    </div>
+  </section>
+</div>

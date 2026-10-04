@@ -2,7 +2,7 @@
   <!-- Top Global Navigation Bar -->
   <header class="app-navbar">
     <div class="nav-container">
-      <div class="nav-brand">
+      <div class="nav-brand" routerLink="/dashboard">
         <div class="logo-mark">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
@@ -14,9 +14,40 @@
         </div>
       </div>
 
+      <!-- Navigation Tabs -->
+      <nav class="nav-links">
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Live Dashboard</span>
+        </a>
+
+        <a routerLink="/search" routerLinkActive="active" class="nav-tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Route Price Finder</span>
+        </a>
+
+        <a routerLink="/methodology" routerLinkActive="active" class="nav-tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span>CPI Methodology</span>
+        </a>
+      </nav>
+
       <div class="nav-status">
         <span class="status-indicator live"></span>
-        <span class="status-text">Backend Connected</span>
+        <span class="status-text">SSE Stream Live</span>
       </div>
     </div>
   </header>

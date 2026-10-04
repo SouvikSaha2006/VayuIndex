@@ -1,6 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
-import { Observable, BehaviorSubject, switchMap, tap, shareReplay } from 'rxjs';
+import { Observable, BehaviorSubject, Subscription, switchMap, shareReplay } from 'rxjs';
 import { VayuService } from '../services/vayu.service';
 import { DailyCPIIndex, FareObservation, FlightRoute } from '../models/vayu.model';
 
@@ -11,30 +11,34 @@ import { DailyCPIIndex, FareObservation, FlightRoute } from '../models/vayu.mode
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private readonly vayuService = inject(VayuService);
 
-  // Reactive trigger subject to refresh streams dynamically
   private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  private sseSubscription?: Subscription;
 
-  // Observable data streams
+  // Real-time SSE stream storage
+  liveStreamFares: any[] = [];
+  liveStreamActive = false;
+
   routes$!: Observable<FlightRoute[]>;
   fares$!: Observable<FareObservation[]>;
-  latestIndex$!: Observable<DailyCPIIndex>;
+  latestIndex$!: Observable<DailyCPIIndex | null>;
   indexHistory$!: Observable<DailyCPIIndex[]>;
 
-  // Component state
   isIngesting = false;
   ingestionSuccessMessage: string | null = null;
   errorMessage: string | null = null;
 
   ngOnInit(): void {
     this.initDataStreams();
+    this.startLiveStream();
   }
 
-  /**
-   * Initializes reactive observables bound to the refresh trigger.
-   */
+  ngOnDestroy(): void {
+    this.sseSubscription?.unsubscribe();
+  }
+
   private initDataStreams(): void {
     this.routes$ = this.refresh$.pipe(
       switchMap(() => this.vayuService.getRoutes()),
@@ -57,10 +61,31 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  /**
-   * Calculates the percentage deviation between the current average fare and the baseline benchmark:
-   * ((current_avg - baseline) / baseline) * 100
-   */
+  private startLiveStream(): void {
+    this.sseSubscription = this.vayuService.connectToLiveStream().subscribe({
+      next: (data) => {
+        if (data && data.fare) {
+          this.liveStreamActive = true;
+          this.liveStreamFares.unshift(data.fare);
+          if (this.liveStreamFares.length > 25) {
+            this.liveStreamFares.pop();
+          }
+          this.refresh$.next();
+        }
+      },
+      error: (err) => {
+        console.warn('Live SSE stream error:', err);
+        this.liveStreamActive = false;
+      },
+    });
+  }
+
+  getCombinedFares(fares: FareObservation[] | null): any[] {
+    const historical = fares || [];
+    const combined = [...this.liveStreamFares, ...historical];
+    return combined.slice(0, 40);
+  }
+
   getPercentageDeviation(route: FlightRoute): number {
     const base = Number(route.base_benchmark_fare);
     const current = Number(route.current_avg_fare ?? route.base_benchmark_fare);
@@ -68,10 +93,6 @@ export class DashboardComponent implements OnInit {
     return ((current - base) / base) * 100;
   }
 
-  /**
-   * Triggers the backend simulation pipeline and re-emits on the refresh subject
-   * to reload all dashboard streams without a full page reload.
-   */
   triggerIngestion(): void {
     this.isIngesting = true;
     this.errorMessage = null;
@@ -81,7 +102,6 @@ export class DashboardComponent implements OnInit {
       next: (res) => {
         this.isIngesting = false;
         this.ingestionSuccessMessage = `Successfully logged ${res.records_logged} fresh fare observations. Recalculated Laspeyres Index: ${res.updated_index.toFixed(2)}`;
-        // Dynamically trigger reload across all subscribed streams
         this.refresh$.next();
       },
       error: (err) => {
@@ -91,9 +111,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * Returns a clean CSS class name based on the airline carrier code.
-   */
   getCarrierBadgeClass(carrier: string): string {
     switch (carrier?.toUpperCase()) {
       case 'INDIGO':

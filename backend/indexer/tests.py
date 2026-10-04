@@ -198,9 +198,9 @@ class SimulatedFareIngestionTests(TestCase):
         }
         self.assertEqual(observed_carriers, expected_carriers)
 
-        # Check all 3 advance booking bands (7, 14, 21 days) are present
+        # Check advance booking bands (3, 7, 14, 21 days) are present
         observed_bands = set(FareObservation.objects.values_list("advance_booking_days", flat=True))
-        self.assertEqual(observed_bands, {7, 14, 21})
+        self.assertEqual(observed_bands, {3, 7, 14, 21})
 
         # Ensure index was calculated and upserted
         today = timezone.localdate()
@@ -594,6 +594,47 @@ class AdminControlCenterTests(TestCase):
         zero_badge = model_admin.inflation_rate_mom(zero_record)
         self.assertIn("#4b5563", zero_badge)
         self.assertIn("0.00%", zero_badge)
+
+
+class AdvancedEndpointsAPITests(APITestCase):
+    def setUp(self):
+        self.del_apt = Airport.objects.create(iata_code="DEL", city_name="Delhi")
+        self.bom_apt = Airport.objects.create(iata_code="BOM", city_name="Mumbai")
+        self.route = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=self.bom_apt,
+            passenger_traffic_weight=2.8,
+            base_benchmark_fare=Decimal("4800.00"),
+        )
+        today = timezone.localdate()
+        FareObservation.objects.create(
+            route=self.route,
+            carrier=FareObservation.Carrier.INDIGO,
+            source_portal=FareObservation.SourcePortal.DIRECT,
+            observed_price_inr=Decimal("5000.00"),
+            departure_date=today + timedelta(days=7),
+            advance_booking_days=7,
+        )
+        DailyCPIIndex.objects.create(
+            calculation_date=today,
+            laspeyres_index_value=104.17,
+            inflation_rate_mom=4.17,
+            total_observations_analyzed=1,
+        )
+
+    def test_route_search_endpoint(self):
+        response = self.client.get("/api/routes/search/?origin=DEL&destination=BOM")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["routes_found"], 1)
+        self.assertEqual(response.data["results"][0]["origin_code"], "DEL")
+        self.assertEqual(response.data["results"][0]["destination_code"], "BOM")
+
+    def test_index_summary_endpoint(self):
+        response = self.client.get("/api/index/summary/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_corridors"], 1)
+        self.assertEqual(response.data["latest_index"]["laspeyres_index_value"], 104.17)
+
 
 
 

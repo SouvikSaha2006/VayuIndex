@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, map, of, throwError } from 'rxjs';
 import {
   Airport,
   DailyCPIIndex,
@@ -15,6 +15,7 @@ import {
 })
 export class VayuService {
   private readonly http = inject(HttpClient);
+  private readonly zone = inject(NgZone);
   private readonly apiUrl = '/api';
 
   /**
@@ -37,6 +38,18 @@ export class VayuService {
         : `Backend Server Error [${error.status}]: ${JSON.stringify(error.error || error.message)}`;
     console.error('[VayuService]', errorMsg);
     return throwError(() => new Error(errorMsg));
+  }
+
+  /**
+   * Fetch all domestic airports.
+   */
+  getAirports(): Observable<Airport[]> {
+    return this.http
+      .get<PaginatedResponse<Airport> | Airport[]>(`${this.apiUrl}/airports/`)
+      .pipe(
+        map((response) => this.extractResults(response)),
+        catchError(this.handleError)
+      );
   }
 
   /**
@@ -82,18 +95,42 @@ export class VayuService {
    * Fetch the most recent daily Laspeyres CPI index calculation.
    * Endpoint: GET /api/cpi-indices/latest/
    */
-  getLatestIndex(): Observable<DailyCPIIndex> {
+  getLatestIndex(): Observable<DailyCPIIndex | null> {
     return this.http
       .get<DailyCPIIndex>(`${this.apiUrl}/cpi-indices/latest/`)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 404) {
+            return of(null);
+          }
+          return this.handleError(error);
+        })
+      );
+  }
+
+  /**
+   * Source-destination flight route search.
+   * Endpoint: GET /api/routes/search/?origin=DEL&destination=BOM
+   */
+  searchRoutes(origin: string, destination: string): Observable<any> {
+    return this.http
+      .get<any>(`${this.apiUrl}/routes/search/?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Fetch macro statistics summary.
+   * Endpoint: GET /api/index/summary/
+   */
+  getIndexSummary(): Observable<any> {
+    return this.http
+      .get<any>(`${this.apiUrl}/index/summary/`)
       .pipe(catchError(this.handleError));
   }
 
   /**
    * Trigger the automated fare scraping ingestion pipeline and recalculate the daily index.
    * Endpoint: POST /api/fares/trigger-ingestion/
-   *
-   * Maps Django's backend response payload (records_ingested / updated_index_value)
-   * to the requested TypeScript contract { status, records_logged, updated_index }.
    */
   triggerIngestion(): Observable<{ status: string; records_logged: number; updated_index: number }> {
     return this.http
@@ -106,5 +143,35 @@ export class VayuService {
         })),
         catchError(this.handleError)
       );
+  }
+
+  /**
+   * Connects to live real-time Server-Sent Events stream (/api/fares/live-stream/).
+   */
+  connectToLiveStream(): Observable<{ fare: any; index: any }> {
+    return new Observable((subscriber) => {
+      const eventSource = new EventSource(`${this.apiUrl}/fares/live-stream/`);
+
+      eventSource.onmessage = (event) => {
+        this.zone.run(() => {
+          try {
+            const data = JSON.parse(event.data);
+            subscriber.next(data);
+          } catch (err) {
+            console.error('Error parsing SSE event:', err);
+          }
+        });
+      };
+
+      eventSource.onerror = (err) => {
+        this.zone.run(() => {
+          console.warn('SSE EventSource error connection lost:', err);
+        });
+      };
+
+      return () => {
+        eventSource.close();
+      };
+    });
   }
 }

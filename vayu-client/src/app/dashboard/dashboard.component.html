@@ -1,8 +1,8 @@
 <div class="dashboard-wrapper">
   <!-- Macro Metrics Header Cards -->
-  <section class="macro-cards-grid">
+  <section class="macro-cards-grid" *ngIf="{ latestIndex: latestIndex$ | async, routes: routes$ | async } as data">
     <!-- Macro Card 1: Current Laspeyres Index -->
-    <div class="macro-card" *ngIf="latestIndex$ | async as latest; else loadingMacroIndex">
+    <div class="macro-card">
       <div class="card-icon index-icon">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -11,24 +11,18 @@
       <div class="card-body">
         <span class="card-label">Current Laspeyres Index</span>
         <div class="card-value-row">
-          <span class="card-value">{{ latest.laspeyres_index_value | number:'1.2-2' }}</span>
+          <span class="card-value">{{ data.latestIndex?.laspeyres_index_value != null ? (data.latestIndex?.laspeyres_index_value | number:'1.2-2') : '100.00' }}</span>
           <span class="base-tag">Base = 100</span>
         </div>
         <p class="card-meta">
-          Calculation Date: <strong>{{ latest.calculation_date }}</strong>
+          Calculation Date: <strong>{{ data.latestIndex?.calculation_date ?? 'Initial Baseline' }}</strong>
         </p>
       </div>
     </div>
-    <ng-template #loadingMacroIndex>
-      <div class="macro-card loading-skeleton">
-        <div class="skeleton-line title"></div>
-        <div class="skeleton-line value"></div>
-      </div>
-    </ng-template>
 
     <!-- Macro Card 2: MoM Inflation Rate -->
-    <div class="macro-card" *ngIf="latestIndex$ | async as latest; else loadingMacroInflation">
-      <div class="card-icon inflation-icon" [class.negative-inflation]="latest.inflation_rate_mom < 0">
+    <div class="macro-card">
+      <div class="card-icon inflation-icon" [class.negative-inflation]="(data.latestIndex?.inflation_rate_mom ?? 0) < 0">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
@@ -36,27 +30,24 @@
       <div class="card-body">
         <span class="card-label">MoM Inflation Rate</span>
         <div class="card-value-row">
-          <span class="card-value" [class.stat-red]="latest.inflation_rate_mom > 0" [class.stat-green]="latest.inflation_rate_mom < 0">
-            {{ latest.inflation_rate_mom > 0 ? '+' : '' }}{{ latest.inflation_rate_mom | number:'1.2-2' }}%
+          <span class="card-value" [class.stat-red]="(data.latestIndex?.inflation_rate_mom ?? 0) > 0" [class.stat-green]="(data.latestIndex?.inflation_rate_mom ?? 0) < 0">
+            <ng-container *ngIf="data.latestIndex as latest; else zeroInflation">
+              {{ latest.inflation_rate_mom > 0 ? '+' : '' }}{{ latest.inflation_rate_mom | number:'1.2-2' }}%
+            </ng-container>
+            <ng-template #zeroInflation>0.00%</ng-template>
           </span>
-          <span class="badge" [class.badge-danger]="latest.inflation_rate_mom > 0" [class.badge-success]="latest.inflation_rate_mom <= 0">
-            {{ latest.inflation_rate_mom > 0 ? 'Surging Fares' : 'Deflating Fares' }}
+          <span class="badge" [class.badge-danger]="(data.latestIndex?.inflation_rate_mom ?? 0) > 0" [class.badge-success]="(data.latestIndex?.inflation_rate_mom ?? 0) <= 0">
+            {{ (data.latestIndex?.inflation_rate_mom ?? 0) > 0 ? 'Surging Fares' : 'Deflating Fares' }}
           </span>
         </div>
         <p class="card-meta">
-          Observations Analyzed: <strong>{{ latest.total_observations_analyzed }}</strong>
+          Observations Analyzed: <strong>{{ data.latestIndex?.total_observations_analyzed ?? 0 }}</strong>
         </p>
       </div>
     </div>
-    <ng-template #loadingMacroInflation>
-      <div class="macro-card loading-skeleton">
-        <div class="skeleton-line title"></div>
-        <div class="skeleton-line value"></div>
-      </div>
-    </ng-template>
 
     <!-- Macro Card 3: Monitored Trunk Corridors -->
-    <div class="macro-card" *ngIf="routes$ | async as routes; else loadingMacroRoutes">
+    <div class="macro-card">
       <div class="card-icon corridor-icon">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
@@ -65,7 +56,7 @@
       <div class="card-body">
         <span class="card-label">Monitored Trunk Corridors</span>
         <div class="card-value-row">
-          <span class="card-value">{{ routes.length }}</span>
+          <span class="card-value">{{ data.routes?.length ?? 0 }}</span>
           <span class="badge badge-info">Metro Directs</span>
         </div>
         <p class="card-meta">
@@ -73,12 +64,6 @@
         </p>
       </div>
     </div>
-    <ng-template #loadingMacroRoutes>
-      <div class="macro-card loading-skeleton">
-        <div class="skeleton-line title"></div>
-        <div class="skeleton-line value"></div>
-      </div>
-    </ng-template>
   </section>
 
   <!-- Interactive Action & Feedback Bar -->
@@ -197,24 +182,29 @@
       </div>
 
       <div class="stream-card">
-        <div class="stream-list" *ngIf="fares$ | async as fares; else faresLoading">
-          <div class="stream-item" *ngFor="let fare of fares.slice(0, 15)">
-            <div class="stream-left">
-              <span class="carrier-badge" [ngClass]="getCarrierBadgeClass(fare.carrier)">
-                {{ fare.carrier_display || fare.carrier }}
-              </span>
-              <div class="stream-route-info">
-                <span class="stream-portal">{{ fare.source_portal_display || fare.source_portal }}</span>
-                <span class="stream-days">{{ fare.advance_booking_days }}d horizon</span>
+        <div class="fare-stream-list stream-list" *ngIf="fares$ | async as fares; else faresLoading">
+          <div class="stream-item fare-card fare-item" *ngFor="let fare of getCombinedFares(fares)">
+            <div class="fare-card-content">
+              <!-- Header Row: Carrier Badge on Left, Price on Right -->
+              <div class="fare-header-row">
+                <span class="carrier-badge" [ngClass]="getCarrierBadgeClass(fare.carrier)">
+                  {{ fare.carrier_display || fare.carrier }}
+                </span>
+                <span class="stream-price">
+                  {{ fare.formatted_price || ('₹' + (fare.observed_price_inr | number:'1.2-2')) }}
+                </span>
               </div>
-            </div>
 
-            <div class="stream-right">
-              <div class="stream-price">
-                {{ fare.formatted_price || ('₹' + (fare.observed_price_inr | number:'1.2-2')) }}
-              </div>
-              <div class="stream-time">
-                {{ fare.scraped_at | date:'shortTime' }}
+              <!-- Subtitle Row: Portal Name & Booking Horizon on Left, Timestamp on Right -->
+              <div class="fare-subtitle-row">
+                <div class="stream-route-info">
+                  <span class="stream-portal">{{ fare.source_portal_display || fare.source_portal }}</span>
+                  <span class="dot-separator">•</span>
+                  <span class="stream-days">{{ fare.advance_booking_days }}d horizon</span>
+                </div>
+                <span class="stream-time">
+                  {{ fare.scraped_at | date:'shortTime' }}
+                </span>
               </div>
             </div>
           </div>
@@ -225,6 +215,18 @@
             <span>Connecting to live fare stream...</span>
           </div>
         </ng-template>
+
+        <!-- Live Meta Footer -->
+        <div class="stream-footer">
+          <div class="footer-status-row">
+            <span class="status-pulse-dot"></span>
+            <span class="status-text">Buffer Active (Real-time live fare stream)</span>
+          </div>
+          <div class="footer-meta-info">
+            <span>Streaming Frequency: ~3.0s ping</span>
+            <span>Active OTAs: MakeMyTrip, EaseMyTrip, Direct</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

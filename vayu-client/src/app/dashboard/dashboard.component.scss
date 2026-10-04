@@ -191,12 +191,26 @@
 /* Dashboard Grid Layout */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.75rem;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 24px;
+  align-items: stretch;
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }
+}
+
+.grid-col {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.corridor-table-container,
+.fare-stream-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
@@ -221,10 +235,15 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .table-responsive {
   overflow-x: auto;
+  flex: 1;
 }
 
 .styled-table {
@@ -343,76 +362,168 @@
   }
 }
 
-/* Live Fare Stream */
+/* Live Fare Stream Card Container */
 .stream-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 0.75rem;
-  max-height: 520px;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
+/* Scrollable Container with Smooth Padding */
+.fare-stream-list,
 .stream-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1 1 0px;
+  min-height: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+
+  /* Custom sleek scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+
+    &:hover {
+      background: #94a3b8;
+    }
+  }
 }
 
+/* Individual Card Item */
+.fare-card,
+.fare-item,
 .stream-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: #f8fafc;
-  border-radius: 8px;
+  height: auto !important;
+  min-height: unset !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  padding: 12px 14px;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  transition: all 0.15s ease;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 
   &:hover {
     background: #ffffff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
     border-color: #cbd5e1;
+    transform: translateY(-1px);
   }
 
-  .stream-left {
+  .fare-card-content {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 6px;
+    width: 100%;
   }
 
-  .stream-route-info {
+  /* Header Row: Carrier Badge on Left, Price on Right */
+  .fare-header-row {
     display: flex;
-    gap: 0.5rem;
-    font-size: 0.75rem;
+    justify-content: space-between;
+    align-items: center;
+
+    .stream-price {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+  }
+
+  /* Subtitle Row: Portal & Horizon on Left, Timestamp on Right */
+  .fare-subtitle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.775rem;
     color: #64748b;
-  }
 
-  .stream-portal {
-    font-weight: 500;
-  }
+    .stream-route-info {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
 
-  .stream-days {
-    background: #e2e8f0;
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
+      .stream-portal {
+        font-weight: 500;
+        color: #475569;
+      }
+
+      .dot-separator {
+        color: #cbd5e1;
+      }
+
+      .stream-days {
+        background: #f1f5f9;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #475569;
+      }
+    }
+
+    .stream-time {
+      font-size: 0.725rem;
+      color: #94a3b8;
+    }
+  }
+}
+
+/* Stream Footer */
+.stream-footer {
+  margin-top: auto;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+
+  .footer-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 600;
-  }
-
-  .stream-right {
-    text-align: right;
-  }
-
-  .stream-price {
-    font-size: 1rem;
-    font-weight: 700;
     color: #0f172a;
+
+    .status-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+      animation: pulse 2s infinite;
+    }
   }
 
-  .stream-time {
-    font-size: 0.7rem;
-    color: #94a3b8;
+  .footer-meta-info {
+    display: flex;
+    justify-content: space-between;
+    color: #64748b;
+    font-size: 0.725rem;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
   }
 }
 
@@ -472,6 +583,18 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
 

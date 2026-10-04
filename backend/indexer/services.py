@@ -28,13 +28,15 @@ CARRIER_PRICE_MULTIPLIERS = {
 }
 
 # Dynamic yield management curve across advance booking horizons:
-# - 21 days out: Early bird inventory release / lower fares
-# - 14 days out: Baseline demand window
+# - 3 days out: Close-in emergency surge / high yield
 # - 7 days out: Close-in booking surge / restricted inventory buckets
+# - 14 days out: Baseline demand window
+# - 21 days out: Early bird inventory release / lower fares
 ADVANCE_BOOKING_MULTIPLIERS = {
-    21: 0.88,
-    14: 1.02,
+    3: 1.45,
     7: 1.28,
+    14: 1.02,
+    21: 0.88,
 }
 
 # Minor distribution channel variance / convenience fee differentials:
@@ -221,7 +223,7 @@ def ingest_simulated_scraped_fares(
         FareObservation.Carrier.SPICEJET,
         FareObservation.Carrier.AKASA,
     ]
-    advance_bands = [7, 14, 21]
+    advance_bands = [3, 7, 14, 21]
     portals = [
         FareObservation.SourcePortal.DIRECT,
         FareObservation.SourcePortal.MAKEMYTRIP,

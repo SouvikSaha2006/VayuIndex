@@ -15,7 +15,7 @@
   .nav-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 0.85rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -25,6 +25,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    cursor: pointer;
 
     .logo-mark {
       background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
@@ -55,6 +56,35 @@
     }
   }
 
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #64748b;
+      text-decoration: none;
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: #0f172a;
+        background-color: #f1f5f9;
+      }
+
+      &.active {
+        color: #2563eb;
+        background-color: #eff6ff;
+      }
+    }
+  }
+
   .nav-status {
     display: flex;
     align-items: center;
@@ -74,8 +104,21 @@
       &.live {
         background-color: #10b981;
         box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        animation: pulse 2s infinite;
       }
     }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
 

@@ -1,0 +1,234 @@
+.methodology-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.methodology-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+
+  .badge {
+    display: inline-block;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: 9999px;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.75rem 0;
+  }
+
+  p {
+    font-size: 1.05rem;
+    color: #64748b;
+    max-width: 750px;
+    margin: 0 auto;
+  }
+}
+
+.card-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 1rem 0;
+  }
+
+  p {
+    font-size: 0.95rem;
+    color: #475569;
+    line-height: 1.6;
+    margin: 0 0 1.25rem 0;
+  }
+}
+
+.math-box {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 2rem;
+  text-align: center;
+  margin: 1.5rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  .formula-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #38bdf8;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+  }
+
+  .formula-latex {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #ffffff;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+  }
+}
+
+.formula-variables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+
+  .var-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    .symbol {
+      font-weight: 700;
+      color: #2563eb;
+      font-size: 1.1rem;
+      font-family: 'Cambria Math', serif;
+    }
+
+    .desc {
+      font-size: 0.85rem;
+      color: #475569;
+    }
+  }
+}
+
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+
+  .highlight-item {
+    background: #f8fafc;
+    border-left: 4px solid #2563eb;
+    border-radius: 8px;
+    padding: 1.25rem;
+
+    .icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 0.5rem 0;
+    }
+
+    p {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin: 0;
+    }
+  }
+}
+
+.table-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .styled-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th {
+      background-color: #f8fafc;
+      padding: 0.85rem 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      font-size: 0.85rem;
+      color: #334155;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .corridor-code {
+      font-weight: 700;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+  }
+}
+
+.horizon-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+
+  .info-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+
+    .days {
+      display: block;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.25rem;
+    }
+
+    .mult {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin: 0;
+    }
+  }
+}
+
+.badge-info {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
