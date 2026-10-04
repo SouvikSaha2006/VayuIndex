@@ -101,6 +101,10 @@ def compute_daily_airfare_index(
 
     weighted_current_sum = 0.0
     weighted_base_sum = 0.0
+    metro_current_sum = 0.0
+    metro_base_sum = 0.0
+    regional_current_sum = 0.0
+    regional_base_sum = 0.0
 
     for route in routes:
         weight = float(route.passenger_traffic_weight)
@@ -120,11 +124,22 @@ def compute_daily_airfare_index(
         weighted_current_sum += p_it * weight
         weighted_base_sum += base_fare * weight
 
+        is_metro_only = (route.origin.metro_tier == "T1" and route.destination.metro_tier == "T1")
+        if is_metro_only:
+            metro_current_sum += p_it * weight
+            metro_base_sum += base_fare * weight
+        else:
+            regional_current_sum += p_it * weight
+            regional_base_sum += base_fare * weight
+
     # Laspeyres Price Index computation
     if weighted_base_sum > 0:
         laspeyres_index = (weighted_current_sum / weighted_base_sum) * 100.0
     else:
         laspeyres_index = 100.0
+
+    metro_sub_index = (metro_current_sum / metro_base_sum * 100.0) if metro_base_sum > 0 else laspeyres_index
+    regional_sub_index = (regional_current_sum / regional_base_sum * 100.0) if regional_base_sum > 0 else laspeyres_index
 
     # Month-over-Month (MoM) inflation rate relative to preceding record
     preceding_record = (
@@ -146,6 +161,8 @@ def compute_daily_airfare_index(
         calculation_date=calculation_date,
         defaults={
             "laspeyres_index_value": round(laspeyres_index, 2),
+            "metro_sub_index": round(metro_sub_index, 2),
+            "regional_sub_index": round(regional_sub_index, 2),
             "inflation_rate_mom": round(inflation_rate_mom, 2),
             "total_observations_analyzed": total_obs_count,
         },

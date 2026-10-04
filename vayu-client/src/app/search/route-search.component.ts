@@ -22,6 +22,8 @@ export class RouteSearchComponent implements OnInit {
     { id: 4, iata_code: 'CCU', city_name: 'Kolkata', metro_tier: 'T1' },
     { id: 5, iata_code: 'HYD', city_name: 'Hyderabad', metro_tier: 'T1' },
     { id: 6, iata_code: 'MAA', city_name: 'Chennai', metro_tier: 'T1' },
+    { id: 7, iata_code: 'PNQ', city_name: 'Pune', metro_tier: 'T2' },
+    { id: 8, iata_code: 'IXB', city_name: 'Bagdogra', metro_tier: 'T3' },
   ];
 
   selectedOrigin = 'DEL';
@@ -33,6 +35,18 @@ export class RouteSearchComponent implements OnInit {
   ngOnInit(): void {
     this.fetchAirports();
     this.onSearch();
+  }
+
+  get t1Airports(): Airport[] {
+    return this.airports.filter((a) => a.metro_tier === 'T1');
+  }
+
+  get t2Airports(): Airport[] {
+    return this.airports.filter((a) => a.metro_tier === 'T2');
+  }
+
+  get t3Airports(): Airport[] {
+    return this.airports.filter((a) => a.metro_tier === 'T3');
   }
 
   fetchAirports(): void {
@@ -72,6 +86,20 @@ export class RouteSearchComponent implements OnInit {
     this.selectedOrigin = this.selectedDestination;
     this.selectedDestination = temp;
     this.onSearch();
+  }
+
+  getRouteTierBadge(): string {
+    const orig = this.airports.find((a) => a.iata_code === this.selectedOrigin);
+    const dest = this.airports.find((a) => a.iata_code === this.selectedDestination);
+    if (!orig || !dest) return 'Domestic Indian Corridor';
+
+    if (orig.metro_tier === 'T1' && dest.metro_tier === 'T1') {
+      return 'Tier 1 Metro ➔ Metro Corridor';
+    }
+    if (orig.metro_tier === 'T3' || dest.metro_tier === 'T3') {
+      return 'Regional ➔ UDAN Connectivity Corridor';
+    }
+    return 'Metro ➔ Tier 2 Commercial Feeder';
   }
 
   getCarrierBadgeClass(carrier: string): string {

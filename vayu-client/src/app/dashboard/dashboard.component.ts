@@ -26,6 +26,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   latestIndex$!: Observable<DailyCPIIndex | null>;
   indexHistory$!: Observable<DailyCPIIndex[]>;
 
+  selectedTierFilter: 'ALL' | 'T1' | 'T2' | 'T3' = 'ALL';
+
   isIngesting = false;
   ingestionSuccessMessage: string | null = null;
   errorMessage: string | null = null;
@@ -78,6 +80,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.liveStreamActive = false;
       },
     });
+  }
+
+  setTierFilter(tier: 'ALL' | 'T1' | 'T2' | 'T3'): void {
+    this.selectedTierFilter = tier;
+  }
+
+  filterRoutes(routes: FlightRoute[] | null): FlightRoute[] {
+    if (!routes) return [];
+    if (this.selectedTierFilter === 'ALL') return routes;
+    if (this.selectedTierFilter === 'T1') {
+      return routes.filter((r) => r.origin_tier === 'T1' && r.destination_tier === 'T1');
+    }
+    if (this.selectedTierFilter === 'T2') {
+      return routes.filter(
+        (r) =>
+          (r.origin_tier === 'T2' || r.destination_tier === 'T2') &&
+          r.origin_tier !== 'T3' &&
+          r.destination_tier !== 'T3'
+      );
+    }
+    if (this.selectedTierFilter === 'T3') {
+      return routes.filter((r) => r.origin_tier === 'T3' || r.destination_tier === 'T3');
+    }
+    return routes;
   }
 
   getCombinedFares(fares: FareObservation[] | null): any[] {

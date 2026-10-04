@@ -9,7 +9,8 @@ class Airport(models.Model):
     """
     class MetroTier(models.TextChoices):
         TIER_1 = "T1", "Tier 1 Metro"
-        TIER_2 = "T2", "Tier 2 Regional Hub"
+        TIER_2 = "T2", "Tier 2 Commercial Hub"
+        TIER_3 = "T3", "Tier 3 Regional / UDAN"
 
     iata_code_validator = RegexValidator(
         regex=r"^[A-Z]{3}$",
@@ -25,6 +26,22 @@ class Airport(models.Model):
     city_name = models.CharField(
         max_length=100,
         help_text="Associated metropolitan area or city name",
+    )
+    state_name = models.CharField(
+        max_length=60,
+        default="",
+        blank=True,
+        help_text="State or Union Territory location",
+    )
+    latitude = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Geographical latitude coordinate",
+    )
+    longitude = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Geographical longitude coordinate",
     )
     metro_tier = models.CharField(
         max_length=2,
@@ -163,6 +180,14 @@ class DailyCPIIndex(models.Model):
     )
     laspeyres_index_value = models.FloatField(
         help_text="Base 100.0 Laspeyres airfare index value for the day",
+    )
+    metro_sub_index = models.FloatField(
+        default=100.0,
+        help_text="Laspeyres price index value for Tier 1 Metro corridors",
+    )
+    regional_sub_index = models.FloatField(
+        default=100.0,
+        help_text="Laspeyres price index value for Tier 2/3 UDAN regional corridors",
     )
     inflation_rate_mom = models.FloatField(
         help_text="Month-over-month (MoM) inflation percentage change",

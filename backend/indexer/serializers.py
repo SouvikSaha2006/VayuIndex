@@ -24,6 +24,9 @@ class AirportSerializer(serializers.ModelSerializer):
             "id",
             "iata_code",
             "city_name",
+            "state_name",
+            "latitude",
+            "longitude",
             "metro_tier",
         ]
 
@@ -41,6 +44,10 @@ class FlightRouteSerializer(serializers.ModelSerializer):
     current_avg_fare = serializers.SerializerMethodField()
     route_name = serializers.CharField(source="__str__", read_only=True)
 
+    origin_tier = serializers.CharField(source="origin.metro_tier", read_only=True)
+    destination_tier = serializers.CharField(source="destination.metro_tier", read_only=True)
+    tier_classification = serializers.SerializerMethodField()
+
     class Meta:
         model = FlightRoute
         fields = [
@@ -52,8 +59,11 @@ class FlightRouteSerializer(serializers.ModelSerializer):
             "route_name",
             "origin_code",
             "origin_city",
+            "origin_tier",
             "destination_code",
             "destination_city",
+            "destination_tier",
+            "tier_classification",
             "current_avg_fare",
         ]
 
@@ -72,6 +82,15 @@ class FlightRouteSerializer(serializers.ModelSerializer):
     def get_destination_city(self, obj: FlightRoute) -> str:
         """Returns city name for the destination airport."""
         return obj.destination.city_name
+
+    def get_tier_classification(self, obj: FlightRoute) -> str:
+        """Returns route tier classification string."""
+        if obj.origin.metro_tier == "T1" and obj.destination.metro_tier == "T1":
+            return "T1 Metro"
+        elif "T3" in (obj.origin.metro_tier, obj.destination.metro_tier):
+            return "T3 UDAN"
+        else:
+            return "T2 Feeder"
 
     def get_current_avg_fare(self, obj: FlightRoute) -> Optional[float]:
         """
@@ -146,6 +165,8 @@ class DailyCPIIndexSerializer(serializers.ModelSerializer):
             "id",
             "calculation_date",
             "laspeyres_index_value",
+            "metro_sub_index",
+            "regional_sub_index",
             "inflation_rate_mom",
             "total_observations_analyzed",
             "recorded_at",

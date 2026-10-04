@@ -1,4 +1,4 @@
-export type MetroTier = 'T1' | 'T2';
+export type MetroTier = 'T1' | 'T2' | 'T3';
 
 export type CarrierCode = 'INDIGO' | 'AIRINDIA' | 'SPICEJET' | 'AKASA';
 
@@ -11,6 +11,9 @@ export interface Airport {
   id: number;
   iata_code: string;
   city_name: string;
+  state_name?: string;
+  latitude?: number;
+  longitude?: number;
   metro_tier: MetroTier;
 }
 
@@ -26,8 +29,11 @@ export interface FlightRoute {
   route_name: string;
   origin_code: string;
   origin_city: string;
+  origin_tier?: MetroTier;
   destination_code: string;
   destination_city: string;
+  destination_tier?: MetroTier;
+  tier_classification?: string;
   current_avg_fare: number | null;
 }
 
@@ -46,9 +52,11 @@ export interface FareObservation {
   observed_price_inr: number | string;
   formatted_price?: string;
   formatted_currency?: string;
-  departure_date: string; // ISO 8601 Date (YYYY-MM-DD)
+  departure_date: string;
   advance_booking_days: number;
-  scraped_at: string; // ISO 8601 DateTime
+  tier_tag?: string;
+  volatility_percentage?: number;
+  scraped_at: string;
 }
 
 /**
@@ -56,11 +64,13 @@ export interface FareObservation {
  */
 export interface DailyCPIIndex {
   id: number;
-  calculation_date: string; // ISO 8601 Date (YYYY-MM-DD)
+  calculation_date: string;
   laspeyres_index_value: number;
+  metro_sub_index?: number;
+  regional_sub_index?: number;
   inflation_rate_mom: number;
   total_observations_analyzed: number;
-  recorded_at: string; // ISO 8601 DateTime
+  recorded_at: string;
 }
 
 /**

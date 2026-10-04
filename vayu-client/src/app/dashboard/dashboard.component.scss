@@ -215,6 +215,11 @@
 
 .panel-header {
   margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 
   h2 {
     font-size: 1.2rem;
@@ -225,6 +230,36 @@
   .subtext {
     font-size: 0.825rem;
     color: #64748b;
+  }
+}
+
+.tier-filter-pills {
+  display: flex;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  padding: 0.25rem;
+  border-radius: 8px;
+
+  .pill-btn {
+    border: none;
+    background: transparent;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.775rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: #0f172a;
+    }
+
+    &.active {
+      background: #ffffff;
+      color: #2563eb;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
   }
 }
 
@@ -359,6 +394,51 @@
   &-info {
     background: #e0f2fe;
     color: #0284c7;
+  }
+
+  &-warning {
+    background: #fef3c7;
+    color: #d97706;
+  }
+}
+
+/* Tier Badges in Table */
+.tier-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.725rem;
+  font-weight: 600;
+
+  &.badge-t1 {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+  }
+
+  &.badge-t2 {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+  }
+
+  &.badge-t3 {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+  }
+}
+
+.macro-card {
+  .card-icon {
+    &.metro-icon {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    &.regional-icon {
+      background: #fff7ed;
+      color: #ea580c;
+    }
   }
 }
 

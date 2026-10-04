@@ -73,6 +73,13 @@ def generate_live_fare_sse():
 
                 cpi_record = compute_daily_airfare_index(calculation_date=today)
 
+                volatility_pct = round(((price_inr - base_fare) / base_fare) * 100, 2)
+                tier_tag = (
+                    "Tier 1 Metro"
+                    if (route.origin.metro_tier == "T1" and route.destination.metro_tier == "T1")
+                    else ("Tier 3 UDAN" if "T3" in (route.origin.metro_tier, route.destination.metro_tier) else "Tier 2 Feeder")
+                )
+
                 payload = {
                     "event": "fare_update",
                     "fare": {
@@ -90,10 +97,14 @@ def generate_live_fare_sse():
                         "source_portal_display": obs.get_source_portal_display(),
                         "observed_price_inr": float(obs.observed_price_inr),
                         "advance_booking_days": obs.advance_booking_days,
+                        "tier_tag": tier_tag,
+                        "volatility_percentage": volatility_pct,
                         "scraped_at": obs.scraped_at.isoformat(),
                     },
                     "index": {
                         "laspeyres_index_value": cpi_record.laspeyres_index_value,
+                        "metro_sub_index": getattr(cpi_record, "metro_sub_index", cpi_record.laspeyres_index_value),
+                        "regional_sub_index": getattr(cpi_record, "regional_sub_index", cpi_record.laspeyres_index_value),
                         "inflation_rate_mom": cpi_record.inflation_rate_mom,
                         "total_observations_analyzed": cpi_record.total_observations_analyzed,
                         "calculation_date": cpi_record.calculation_date.isoformat(),
@@ -490,6 +501,8 @@ def index_summary_view(request: HttpRequest) -> Response:
         {
             "calculation_date": idx.calculation_date.isoformat(),
             "laspeyres_index_value": idx.laspeyres_index_value,
+            "metro_sub_index": idx.metro_sub_index,
+            "regional_sub_index": idx.regional_sub_index,
             "inflation_rate_mom": idx.inflation_rate_mom,
             "total_observations_analyzed": idx.total_observations_analyzed,
         }
@@ -500,6 +513,8 @@ def index_summary_view(request: HttpRequest) -> Response:
         {
             "calculation_date": latest_index.calculation_date.isoformat(),
             "laspeyres_index_value": latest_index.laspeyres_index_value,
+            "metro_sub_index": latest_index.metro_sub_index,
+            "regional_sub_index": latest_index.regional_sub_index,
             "inflation_rate_mom": latest_index.inflation_rate_mom,
             "total_observations_analyzed": latest_index.total_observations_analyzed,
         }
@@ -507,6 +522,8 @@ def index_summary_view(request: HttpRequest) -> Response:
         else {
             "calculation_date": timezone.localdate().isoformat(),
             "laspeyres_index_value": 100.0,
+            "metro_sub_index": 100.0,
+            "regional_sub_index": 100.0,
             "inflation_rate_mom": 0.0,
             "total_observations_analyzed": 0,
         }

@@ -10,9 +10,21 @@
       <div class="field-group">
         <label for="origin-select">Departure Origin</label>
         <select id="origin-select" [(ngModel)]="selectedOrigin" name="selectedOrigin" class="form-select">
-          <option *ngFor="let apt of airports" [value]="apt.iata_code">
-            {{ apt.iata_code }} - {{ apt.city_name }}
-          </option>
+          <optgroup label="Tier 1 - Metros">
+            <option *ngFor="let apt of t1Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
+          <optgroup label="Tier 2 - Commercial Hubs" *ngIf="t2Airports.length > 0">
+            <option *ngFor="let apt of t2Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
+          <optgroup label="Tier 3 - Regional & UDAN" *ngIf="t3Airports.length > 0">
+            <option *ngFor="let apt of t3Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
         </select>
       </div>
 
@@ -23,9 +35,21 @@
       <div class="field-group">
         <label for="dest-select">Arrival Destination</label>
         <select id="dest-select" [(ngModel)]="selectedDestination" name="selectedDestination" class="form-select">
-          <option *ngFor="let apt of airports" [value]="apt.iata_code">
-            {{ apt.iata_code }} - {{ apt.city_name }}
-          </option>
+          <optgroup label="Tier 1 - Metros">
+            <option *ngFor="let apt of t1Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
+          <optgroup label="Tier 2 - Commercial Hubs" *ngIf="t2Airports.length > 0">
+            <option *ngFor="let apt of t2Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
+          <optgroup label="Tier 3 - Regional & UDAN" *ngIf="t3Airports.length > 0">
+            <option *ngFor="let apt of t3Airports" [value]="apt.iata_code">
+              {{ apt.iata_code }} - {{ apt.city_name }} ({{ apt.state_name || 'India' }})
+            </option>
+          </optgroup>
         </select>
       </div>
 
@@ -65,7 +89,10 @@
               <span class="arrow">&rarr;</span>
               <span class="pill">{{ searchResult.route?.destination || selectedDestination }}</span>
             </div>
-            <span class="meta">{{ searchResult.results[0]?.origin_city || selectedOrigin }} to {{ searchResult.results[0]?.destination_city || selectedDestination }}</span>
+            <div class="corridor-meta-badges">
+              <span class="tier-pill-badge">{{ getRouteTierBadge() }}</span>
+              <span class="meta">{{ searchResult.results[0]?.origin_city || selectedOrigin }} to {{ searchResult.results[0]?.destination_city || selectedDestination }}</span>
+            </div>
           </div>
         </div>
 
