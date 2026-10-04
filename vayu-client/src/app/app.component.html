@@ -1,105 +1,28 @@
-<div class="vayu-container">
-  <header class="vayu-header">
-    <div class="header-content">
-      <div class="brand">
-        <span class="badge">DGCA / CPI Augmentation</span>
-        <h1>VayuIndex</h1>
-        <p class="subtitle">Domestic Indian Airfare Volatility & Laspeyres CPI Price Index Monitor</p>
+<div class="app-layout">
+  <!-- Top Global Navigation Bar -->
+  <header class="app-navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <div class="logo-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="app-name">VayuIndex</span>
+          <span class="app-tagline">National Airfare Volatility & CPI Augmentation</span>
+        </div>
       </div>
-      <div class="actions">
-        <button class="btn btn-primary" (click)="triggerIngest()" [disabled]="isIngesting">
-          {{ isIngesting ? 'Ingesting Scraped Quotes...' : 'Trigger Live Ingestion' }}
-        </button>
+
+      <div class="nav-status">
+        <span class="status-indicator live"></span>
+        <span class="status-text">Backend Connected</span>
       </div>
     </div>
   </header>
 
-  <!-- Notification Banner -->
-  @if (ingestionResult) {
-    <div class="alert alert-success">
-      Pipeline executed successfully! <strong>{{ ingestionResult.records_logged }}</strong> records ingested. Updated Laspeyres Index: <strong>{{ ingestionResult.updated_index | number:'1.2-2' }}</strong>.
-    </div>
-  }
-  @if (errorMessage) {
-    <div class="alert alert-danger">
-      {{ errorMessage }}
-    </div>
-  }
-
-  <!-- KPI Cards -->
-  <section class="kpi-grid">
-    <div class="kpi-card" *ngIf="latestIndex$ | async as latest; else loadingLatest">
-      <span class="kpi-label">Current Laspeyres Index</span>
-      <span class="kpi-value">{{ latest.laspeyres_index_value | number:'1.2-2' }}</span>
-      <span class="kpi-meta" [class.positive]="latest.inflation_rate_mom > 0" [class.negative]="latest.inflation_rate_mom < 0">
-        MoM: {{ latest.inflation_rate_mom > 0 ? '+' : '' }}{{ latest.inflation_rate_mom | number:'1.2-2' }}%
-      </span>
-      <span class="kpi-date">Date: {{ latest.calculation_date }}</span>
-    </div>
-    <ng-template #loadingLatest>
-      <div class="kpi-card loading">
-        <span class="kpi-label">Current Laspeyres Index</span>
-        <span class="kpi-value">Connecting...</span>
-      </div>
-    </ng-template>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Monitored Trunk Routes</span>
-      <span class="kpi-value" *ngIf="routes$ | async as routes; else loadingRoutes">
-        {{ routes.length }}
-      </span>
-      <ng-template #loadingRoutes>
-        <span class="kpi-value">--</span>
-      </ng-template>
-      <span class="kpi-meta">High-density corridor coverage</span>
-    </div>
-
-    <div class="kpi-card">
-      <span class="kpi-label">Sampled Fares</span>
-      <span class="kpi-value" *ngIf="fares$ | async as fares; else loadingFares">
-        {{ fares.length }}
-      </span>
-      <ng-template #loadingFares>
-        <span class="kpi-value">--</span>
-      </ng-template>
-      <span class="kpi-meta">Advance horizons (7d, 14d, 21d)</span>
-    </div>
-  </section>
-
-  <!-- Route Corridors -->
-  <section class="section-card">
-    <h2>Domestic Route Corridors</h2>
-    <div class="table-responsive" *ngIf="routes$ | async as routes; else loadingRoutesTable">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Corridor</th>
-            <th>Origin</th>
-            <th>Destination</th>
-            <th>Weight (w_i)</th>
-            <th>Base Benchmark</th>
-            <th>Current Avg Fare</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let route of routes">
-            <td><strong>{{ route.route_name || (route.origin_code + ' -> ' + route.destination_code) }}</strong></td>
-            <td>{{ route.origin_city }} ({{ route.origin_code }})</td>
-            <td>{{ route.destination_city }} ({{ route.destination_code }})</td>
-            <td>{{ route.passenger_traffic_weight | number:'1.2-2' }}</td>
-            <td>₹{{ route.base_benchmark_fare }}</td>
-            <td>
-              <span class="fare-badge">₹{{ route.current_avg_fare || route.base_benchmark_fare }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #loadingRoutesTable>
-      <p class="loading-state">Loading flight route corridors from Django backend...</p>
-    </ng-template>
-  </section>
-
-  <!-- Router outlet for child pages -->
-  <router-outlet></router-outlet>
+  <!-- Routed Main Application View -->
+  <main class="app-main">
+    <router-outlet></router-outlet>
+  </main>
 </div>

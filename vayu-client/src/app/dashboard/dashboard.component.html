@@ -1,0 +1,231 @@
+<div class="dashboard-wrapper">
+  <!-- Macro Metrics Header Cards -->
+  <section class="macro-cards-grid">
+    <!-- Macro Card 1: Current Laspeyres Index -->
+    <div class="macro-card" *ngIf="latestIndex$ | async as latest; else loadingMacroIndex">
+      <div class="card-icon index-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      </div>
+      <div class="card-body">
+        <span class="card-label">Current Laspeyres Index</span>
+        <div class="card-value-row">
+          <span class="card-value">{{ latest.laspeyres_index_value | number:'1.2-2' }}</span>
+          <span class="base-tag">Base = 100</span>
+        </div>
+        <p class="card-meta">
+          Calculation Date: <strong>{{ latest.calculation_date }}</strong>
+        </p>
+      </div>
+    </div>
+    <ng-template #loadingMacroIndex>
+      <div class="macro-card loading-skeleton">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line value"></div>
+      </div>
+    </ng-template>
+
+    <!-- Macro Card 2: MoM Inflation Rate -->
+    <div class="macro-card" *ngIf="latestIndex$ | async as latest; else loadingMacroInflation">
+      <div class="card-icon inflation-icon" [class.negative-inflation]="latest.inflation_rate_mom < 0">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+      </div>
+      <div class="card-body">
+        <span class="card-label">MoM Inflation Rate</span>
+        <div class="card-value-row">
+          <span class="card-value" [class.stat-red]="latest.inflation_rate_mom > 0" [class.stat-green]="latest.inflation_rate_mom < 0">
+            {{ latest.inflation_rate_mom > 0 ? '+' : '' }}{{ latest.inflation_rate_mom | number:'1.2-2' }}%
+          </span>
+          <span class="badge" [class.badge-danger]="latest.inflation_rate_mom > 0" [class.badge-success]="latest.inflation_rate_mom <= 0">
+            {{ latest.inflation_rate_mom > 0 ? 'Surging Fares' : 'Deflating Fares' }}
+          </span>
+        </div>
+        <p class="card-meta">
+          Observations Analyzed: <strong>{{ latest.total_observations_analyzed }}</strong>
+        </p>
+      </div>
+    </div>
+    <ng-template #loadingMacroInflation>
+      <div class="macro-card loading-skeleton">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line value"></div>
+      </div>
+    </ng-template>
+
+    <!-- Macro Card 3: Monitored Trunk Corridors -->
+    <div class="macro-card" *ngIf="routes$ | async as routes; else loadingMacroRoutes">
+      <div class="card-icon corridor-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </svg>
+      </div>
+      <div class="card-body">
+        <span class="card-label">Monitored Trunk Corridors</span>
+        <div class="card-value-row">
+          <span class="card-value">{{ routes.length }}</span>
+          <span class="badge badge-info">Metro Directs</span>
+        </div>
+        <p class="card-meta">
+          High-Density Statistical Basket
+        </p>
+      </div>
+    </div>
+    <ng-template #loadingMacroRoutes>
+      <div class="macro-card loading-skeleton">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line value"></div>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- Interactive Action & Feedback Bar -->
+  <section class="control-panel">
+    <div class="control-info">
+      <h3>Automated Airfare Ingestion & Calculation Engine</h3>
+      <p>Simulate fresh live OTA fare observations across advance booking windows and recompute the daily index.</p>
+    </div>
+    <div class="control-actions">
+      <button
+        id="btn-trigger-ingestion"
+        class="btn-trigger"
+        (click)="triggerIngestion()"
+        [disabled]="isIngesting"
+      >
+        <span class="spinner" *ngIf="isIngesting"></span>
+        <svg *ngIf="!isIngesting" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        {{ isIngesting ? 'Ingesting Scraped Quotes...' : 'Trigger Ingestion & Recalculate' }}
+      </button>
+    </div>
+  </section>
+
+  <!-- Ingestion Success / Error Alerts -->
+  <div class="alert-box alert-success" *ngIf="ingestionSuccessMessage">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <span>{{ ingestionSuccessMessage }}</span>
+  </div>
+
+  <div class="alert-box alert-danger" *ngIf="errorMessage">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Main Content Grid: Corridors Table & Live Fare Stream -->
+  <div class="dashboard-grid">
+    <!-- Left Column: Trunk Corridor Table -->
+    <div class="grid-col corridor-table-container">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Trunk Corridor Price Relatives</h2>
+          <span class="subtext">Laspeyres weighted baseline benchmark vs. real-time observed averages</span>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive" *ngIf="routes$ | async as routes; else routesLoading">
+          <table class="styled-table" id="corridor-table">
+            <thead>
+              <tr>
+                <th>Route Corridor</th>
+                <th>Origin - Destination</th>
+                <th>Baseline (p_0)</th>
+                <th>Current Avg (p_t)</th>
+                <th>Percentage Deviation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let route of routes">
+                <td class="corridor-code">
+                  <span class="route-pill">
+                    {{ route.origin_code }}
+                    <span class="plane-icon">✈</span>
+                    {{ route.destination_code }}
+                  </span>
+                </td>
+                <td class="city-pair">
+                  {{ route.origin_city }} &rarr; {{ route.destination_city }}
+                </td>
+                <td class="baseline-fare">
+                  ₹{{ route.base_benchmark_fare | number:'1.2-2' }}
+                </td>
+                <td class="current-fare">
+                  <strong>₹{{ (route.current_avg_fare || route.base_benchmark_fare) | number:'1.2-2' }}</strong>
+                </td>
+                <td class="deviation-cell">
+                  <ng-container *ngIf="getPercentageDeviation(route) as deviation">
+                    <span
+                      class="deviation-badge"
+                      [class.badge-positive]="deviation > 0"
+                      [class.badge-negative]="deviation < 0"
+                      [class.badge-neutral]="deviation === 0"
+                    >
+                      {{ deviation > 0 ? '▲ +' : (deviation < 0 ? '▼ ' : '● ') }}{{ deviation | number:'1.2-2' }}%
+                    </span>
+                  </ng-container>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #routesLoading>
+          <div class="loading-state">
+            <span class="spinner dark"></span>
+            <span>Loading trunk corridor routes from API...</span>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Fare Stream List -->
+    <div class="grid-col fare-stream-container">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Live Fare Stream</h2>
+          <span class="subtext">Real-time quotes captured across airline and OTA portals</span>
+        </div>
+      </div>
+
+      <div class="stream-card">
+        <div class="stream-list" *ngIf="fares$ | async as fares; else faresLoading">
+          <div class="stream-item" *ngFor="let fare of fares.slice(0, 15)">
+            <div class="stream-left">
+              <span class="carrier-badge" [ngClass]="getCarrierBadgeClass(fare.carrier)">
+                {{ fare.carrier_display || fare.carrier }}
+              </span>
+              <div class="stream-route-info">
+                <span class="stream-portal">{{ fare.source_portal_display || fare.source_portal }}</span>
+                <span class="stream-days">{{ fare.advance_booking_days }}d horizon</span>
+              </div>
+            </div>
+
+            <div class="stream-right">
+              <div class="stream-price">
+                {{ fare.formatted_price || ('₹' + (fare.observed_price_inr | number:'1.2-2')) }}
+              </div>
+              <div class="stream-time">
+                {{ fare.scraped_at | date:'shortTime' }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <ng-template #faresLoading>
+          <div class="loading-state">
+            <span class="spinner dark"></span>
+            <span>Connecting to live fare stream...</span>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

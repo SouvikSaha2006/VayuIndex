@@ -1,0 +1,38 @@
+# Render Blueprint Specification for VayuIndex
+# Architecture: Django REST API Service + Managed PostgreSQL Database
+
+databases:
+  - name: vayuindex-db
+    databaseName: vayuindex
+    user: vayu_admin
+    plan: free
+    region: singapore # Options: oregon, frankfurt, ohio, singapore
+    ipAllowList: []   # Accessible from all internal Render services
+
+services:
+  - type: web
+    name: vayuindex-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: singapore
+    buildCommand: bash build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vayuindex-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: localhost,127.0.0.1,.onrender.com
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://*.onrender.com,https://*.vercel.app
