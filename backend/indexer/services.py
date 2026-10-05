@@ -325,3 +325,175 @@ def ingest_simulated_scraped_fares(
         "calculation_date": target_date.isoformat(),
         "total_observations_analyzed": daily_index.total_observations_analyzed,
     }
+
+
+def simulate_inflation_shock(
+    fuel_shock_pct: float = 0.0,
+    regional_surge_pct: float = 0.0,
+    capacity_cut_pct: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    Simulates macroeconomic price shocks on the airfare network and computes
+    simulated Laspeyres CPI index and top impacted routes.
+
+    Formula:
+        Simulated Price = Current Price * (1 + (fuel_shock_pct * 0.40) / 100)
+                                        * (1 + (is_regional ? regional_surge_pct : 0) / 100)
+                                        * (1 + (capacity_cut_pct * 0.8) / 100)
+
+    (ATF represents ~40% of airline operational expense in India; capacity cuts have 0.8 elasticity).
+
+    Recomputes the simulated Laspeyres Index against original baseline benchmarks,
+    computes the simulated MoM inflation rate and the net delta (+X.XX points),
+    and isolates the top 5 corridors with highest fare spikes.
+    """
+    try:
+        fuel_shock_pct = float(fuel_shock_pct)
+    except (TypeError, ValueError):
+        fuel_shock_pct = 0.0
+
+    try:
+        regional_surge_pct = float(regional_surge_pct)
+    except (TypeError, ValueError):
+        regional_surge_pct = 0.0
+
+    try:
+        capacity_cut_pct = float(capacity_cut_pct)
+    except (TypeError, ValueError):
+        capacity_cut_pct = 0.0
+
+    routes = list(FlightRoute.objects.select_related("origin", "destination").all())
+    if not routes:
+        logger.warning("No flight routes found for inflation shock simulation.")
+        return {
+            "baseline_index": 100.0,
+            "simulated_index": 100.0,
+            "index_delta": 0.0,
+            "simulated_mom_inflation": 0.0,
+            "most_impacted_routes": [],
+        }
+
+    # Fetch recent fares per route to determine current market prices
+    today = timezone.localdate()
+    obs_today = FareObservation.objects.filter(scraped_at__date=today)
+    route_fares_map: Dict[int, List[float]] = defaultdict(list)
+    if obs_today.exists():
+        for r_id, price in obs_today.values_list("route_id", "observed_price_inr"):
+            route_fares_map[r_id].append(float(price))
+    else:
+        # Fallback to recent fares
+        recent_obs = FareObservation.objects.order_by("-scraped_at")[:1000]
+        for r_id, price in recent_obs.values_list("route_id", "observed_price_inr"):
+            if len(route_fares_map[r_id]) < 15:
+                route_fares_map[r_id].append(float(price))
+
+    fuel_multiplier = 1.0 + (fuel_shock_pct * 0.40) / 100.0
+    capacity_multiplier = 1.0 + (capacity_cut_pct * 0.80) / 100.0
+
+    weighted_current_sum = 0.0
+    weighted_simulated_sum = 0.0
+    weighted_base_sum = 0.0
+
+    impacted_routes: List[Dict[str, Any]] = []
+
+    for route in routes:
+        weight = float(route.passenger_traffic_weight)
+        base_benchmark = float(route.base_benchmark_fare)
+
+        fares = route_fares_map.get(route.id, [])
+        if fares:
+            current_price = float(statistics.median(fares))
+        else:
+            current_price = base_benchmark
+
+        is_regional = (
+            route.origin.metro_tier in ("T2", "T3")
+            or route.destination.metro_tier in ("T2", "T3")
+        )
+
+        regional_multiplier = (
+            (1.0 + (regional_surge_pct / 100.0)) if is_regional else 1.0
+        )
+
+        simulated_price = (
+            current_price
+            * fuel_multiplier
+            * regional_multiplier
+            * capacity_multiplier
+        )
+
+        weighted_current_sum += current_price * weight
+        weighted_simulated_sum += simulated_price * weight
+        weighted_base_sum += base_benchmark * weight
+
+        fare_spike = simulated_price - current_price
+        spike_pct = (
+            ((simulated_price - current_price) / current_price * 100.0)
+            if current_price > 0
+            else 0.0
+        )
+
+        tier_tag = (
+            "Tier 3 UDAN"
+            if ("T3" in (route.origin.metro_tier, route.destination.metro_tier))
+            else (
+                "Tier 2 Feeder"
+                if ("T2" in (route.origin.metro_tier, route.destination.metro_tier))
+                else "Tier 1 Metro"
+            )
+        )
+
+        impacted_routes.append({
+            "route_id": route.id,
+            "corridor": f"{route.origin.iata_code} -> {route.destination.iata_code}",
+            "route_name": f"{route.origin.city_name} to {route.destination.city_name}",
+            "origin_code": route.origin.iata_code,
+            "origin_city": route.origin.city_name,
+            "destination_code": route.destination.iata_code,
+            "destination_city": route.destination.city_name,
+            "tier_tag": tier_tag,
+            "is_regional": is_regional,
+            "baseline_fare": round(current_price, 2),
+            "current_fare": round(current_price, 2),
+            "simulated_fare": round(simulated_price, 2),
+            "fare_spike_inr": round(fare_spike, 2),
+            "spike_percentage": round(spike_pct, 2),
+            "weight": round(weight, 2),
+        })
+
+    # Laspeyres index formulation
+    if weighted_base_sum > 0:
+        baseline_index = (weighted_current_sum / weighted_base_sum) * 100.0
+        simulated_index = (weighted_simulated_sum / weighted_base_sum) * 100.0
+    else:
+        baseline_index = 100.0
+        simulated_index = 100.0
+
+    index_delta = simulated_index - baseline_index
+
+    # Simulated MoM Inflation rate relative to preceding actual record
+    preceding_record = (
+        DailyCPIIndex.objects.filter(calculation_date__lt=today)
+        .order_by("-calculation_date")
+        .first()
+    )
+    if preceding_record and preceding_record.laspeyres_index_value > 0:
+        simulated_mom_inflation = (
+            (simulated_index - preceding_record.laspeyres_index_value)
+            / preceding_record.laspeyres_index_value
+        ) * 100.0
+    else:
+        # Fallback to index growth from base 100
+        simulated_mom_inflation = simulated_index - 100.0
+
+    # Sort impacted routes by fare_spike_inr descending
+    impacted_routes.sort(key=lambda r: (r["fare_spike_inr"], r["spike_percentage"]), reverse=True)
+    top_5_impacted = impacted_routes[:5]
+
+    return {
+        "baseline_index": round(baseline_index, 2),
+        "simulated_index": round(simulated_index, 2),
+        "index_delta": round(index_delta, 2),
+        "simulated_mom_inflation": round(simulated_mom_inflation, 2),
+        "most_impacted_routes": top_5_impacted,
+    }

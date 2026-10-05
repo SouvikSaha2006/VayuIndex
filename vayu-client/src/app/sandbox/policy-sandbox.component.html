@@ -1,0 +1,381 @@
+<div class="sandbox-container">
+  <!-- Top Header & Policy Dossier Action -->
+  <header class="sandbox-header">
+    <div class="header-left">
+      <div class="badge-tag">MACROECONOMIC SURVEILLANCE & POLICY SIMULATION</div>
+      <h1 class="page-title">Inflation Shock Simulation Sandbox</h1>
+      <p class="page-subtitle">
+        Stress-test national airfare volatility under exogenous Aviation Turbine Fuel (ATF) shocks,
+        regional UDAN festive demand surges, and fleet capacity contractions against official MoSPI CPI benchmarks.
+      </p>
+    </div>
+    <div class="header-right">
+      <button
+        class="btn-dossier"
+        (click)="downloadMoSPIReport()"
+        [disabled]="isDownloadingPdf"
+      >
+        <svg *ngIf="!isDownloadingPdf" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        <span *ngIf="isDownloadingPdf" class="spinner-small"></span>
+        <span>{{ isDownloadingPdf ? 'Compiling Dossier...' : 'Download Official MoSPI Policy Brief (PDF)' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Alerts -->
+  <div *ngIf="downloadSuccessMessage" class="alert alert-success">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <span>{{ downloadSuccessMessage }}</span>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Preset Scenario Selector -->
+  <section class="preset-scenarios-section">
+    <div class="preset-label">Macroeconomic Shock Presets:</div>
+    <div class="preset-chips">
+      <button
+        *ngFor="let p of presets"
+        class="preset-chip"
+        (click)="applyPreset(p)"
+      >
+        <span class="preset-chip-name">{{ p.name }}</span>
+        <span class="preset-chip-desc">{{ p.description }}</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Interactive Control Deck (Sliders) -->
+  <section class="control-deck-card">
+    <div class="deck-header">
+      <div class="deck-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="21" x2="4" y2="14"></line>
+          <line x1="4" y1="10" x2="4" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12" y2="3"></line>
+          <line x1="20" y1="21" x2="20" y2="16"></line>
+          <line x1="20" y1="12" x2="20" y2="3"></line>
+          <line x1="1" y1="14" x2="7" y2="14"></line>
+          <line x1="9" y1="8" x2="15" y2="8"></line>
+          <line x1="17" y1="16" x2="23" y2="16"></line>
+        </svg>
+        <span>Exogenous Stress Vectors & Elasticity Deck</span>
+      </div>
+      <div class="deck-meta">
+        Elasticity Model: <code>Price = P₀ × (1 + Fuel×0.40) × (1 + Regional) × (1 + Fleet×0.80)</code>
+      </div>
+    </div>
+
+    <div class="sliders-grid">
+      <!-- Slider 1: ATF Fuel Shock -->
+      <div class="slider-control-box">
+        <div class="slider-label-row">
+          <div class="slider-name">
+            <span class="slider-indicator fuel-dot"></span>
+            <strong>ATF Jet Fuel Price Fluctuation</strong>
+          </div>
+          <div class="slider-value-badge" [class.negative]="fuelShockPct < 0" [class.positive]="fuelShockPct > 0">
+            {{ fuelShockPct > 0 ? '+' : '' }}{{ fuelShockPct | number:'1.1-1' }}%
+          </div>
+        </div>
+        <div class="slider-track-wrap">
+          <input
+            type="range"
+            min="-20"
+            max="50"
+            step="0.5"
+            [(ngModel)]="fuelShockPct"
+            class="slider-input fuel-slider"
+          />
+        </div>
+        <div class="slider-ticks">
+          <span>-20% (Crude Slump)</span>
+          <span>0% (Baseline)</span>
+          <span>+25%</span>
+          <span>+50% (Energy Crisis)</span>
+        </div>
+        <p class="slider-callout">
+          <strong>Economic Context:</strong> Aviation Turbine Fuel constitutes ~40% of Indian airlines' operational expenditure (OPEX). Pass-through elasticity is calibrated at 0.40.
+        </p>
+      </div>
+
+      <!-- Slider 2: Regional / UDAN Festive Surge -->
+      <div class="slider-control-box">
+        <div class="slider-label-row">
+          <div class="slider-name">
+            <span class="slider-indicator surge-dot"></span>
+            <strong>Festival / Holiday Surge Demand (Tier-2/3 UDAN)</strong>
+          </div>
+          <div class="slider-value-badge" [class.positive]="regionalSurgePct > 0">
+            +{{ regionalSurgePct | number:'1.1-1' }}%
+          </div>
+        </div>
+        <div class="slider-track-wrap">
+          <input
+            type="range"
+            min="0"
+            max="60"
+            step="0.5"
+            [(ngModel)]="regionalSurgePct"
+            class="slider-input surge-slider"
+          />
+        </div>
+        <div class="slider-ticks">
+          <span>0% (Off-Peak)</span>
+          <span>+20%</span>
+          <span>+40% (Durga Puja)</span>
+          <span>+60% (Diwali / Chhath)</span>
+        </div>
+        <p class="slider-callout">
+          <strong>Economic Context:</strong> Captures extreme asymmetric fare inflation across non-metro Tier-2 and regional UDAN corridors during festive travel peaks.
+        </p>
+      </div>
+
+      <!-- Slider 3: Fleet Capacity Constraints -->
+      <div class="slider-control-box">
+        <div class="slider-label-row">
+          <div class="slider-name">
+            <span class="slider-indicator capacity-dot"></span>
+            <strong>Fleet Capacity Constraints / Groundings</strong>
+          </div>
+          <div class="slider-value-badge" [class.positive]="capacityCutPct > 0">
+            +{{ capacityCutPct | number:'1.1-1' }}%
+          </div>
+        </div>
+        <div class="slider-track-wrap">
+          <input
+            type="range"
+            min="0"
+            max="30"
+            step="0.5"
+            [(ngModel)]="capacityCutPct"
+            class="slider-input capacity-slider"
+          />
+        </div>
+        <div class="slider-ticks">
+          <span>0% (Full Fleet)</span>
+          <span>+10%</span>
+          <span>+20% (Engine Inspections)</span>
+          <span>+30% (Severe Grounding)</span>
+        </div>
+        <p class="slider-callout">
+          <strong>Economic Context:</strong> Supply contraction multiplier applying standard transport price elasticity of 0.8x on scheduled Available Seat Kilometres (ASKM).
+        </p>
+      </div>
+    </div>
+
+    <!-- Actions Deck -->
+    <div class="deck-actions-bar">
+      <button
+        class="btn-primary-simulation"
+        (click)="runSimulation()"
+        [disabled]="isSimulating"
+      >
+        <svg *ngIf="!isSimulating" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span *ngIf="isSimulating" class="spinner-small"></span>
+        <span>{{ isSimulating ? 'Simulating Elasticity Basket...' : 'Run Monte-Carlo Shock Simulation' }}</span>
+      </button>
+
+      <button
+        class="btn-secondary-reset"
+        (click)="resetToRealtime()"
+        [disabled]="isSimulating"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <polyline points="23 20 23 14 17 14"></polyline>
+          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+        </svg>
+        <span>Reset to Real-Time Feed</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Visual Impact Comparison Cards Grid -->
+  <section *ngIf="simulationResult" class="comparison-cards-grid">
+    <!-- Card 1: Laspeyres Index Comparison -->
+    <div class="metric-card">
+      <div class="card-header-row">
+        <span class="card-title-text">Laspeyres Price Index Shift</span>
+        <span class="badge-benchmark">Base: 100.0</span>
+      </div>
+      <div class="comparison-values">
+        <div class="val-block baseline">
+          <div class="label">Original Baseline</div>
+          <div class="num">{{ simulationResult.baseline_index | number:'1.2-2' }}</div>
+        </div>
+        <div class="val-arrow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+        <div class="val-block simulated">
+          <div class="label">Simulated Index</div>
+          <div class="num">{{ simulationResult.simulated_index | number:'1.2-2' }}</div>
+        </div>
+      </div>
+      <div class="diff-indicator-row">
+        <div
+          class="diff-badge"
+          [class.flash-pulse]="flashDiff"
+          [class.negative]="simulationResult.index_delta < 0"
+          [class.positive]="simulationResult.index_delta > 0"
+        >
+          <svg *ngIf="simulationResult.index_delta > 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+          <svg *ngIf="simulationResult.index_delta < 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          <span>Net Shock Delta: {{ simulationResult.index_delta > 0 ? '+' : '' }}{{ simulationResult.index_delta | number:'1.2-2' }} pts</span>
+        </div>
+        <div class="macro-verdict">
+          {{ simulationResult.index_delta > 5 ? 'Severe Transport Basket Inflation' : 'Moderate Volatility Pass-Through' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Projected MoM Inflation -->
+    <div class="metric-card">
+      <div class="card-header-row">
+        <span class="card-title-text">Projected CPI MoM Inflation</span>
+        <span class="badge-cpi">National Transport</span>
+      </div>
+      <div class="headline-metric-row">
+        <div class="headline-number" [class.red]="simulationResult.simulated_mom_inflation > 0" [class.green]="simulationResult.simulated_mom_inflation <= 0">
+          {{ simulationResult.simulated_mom_inflation > 0 ? '+' : '' }}{{ simulationResult.simulated_mom_inflation | number:'1.2-2' }}%
+        </div>
+        <div class="headline-subtext">
+          Derived Month-over-Month airfare component inflation augmenting MoSPI CPI headline figures.
+        </div>
+      </div>
+      <div class="inflation-impact-meter">
+        <div class="meter-bar">
+          <div
+            class="meter-fill"
+            [style.width.%]="simulationResult.simulated_mom_inflation > 0 ? (simulationResult.simulated_mom_inflation * 7 > 100 ? 100 : simulationResult.simulated_mom_inflation * 7) : 5"
+          ></div>
+        </div>
+        <div class="meter-labels">
+          <span>0% Target</span>
+          <span>+5% Elevated</span>
+          <span>+10%+ Crisis</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Macroeconomic Elasticity Attribution -->
+    <div class="metric-card">
+      <div class="card-header-row">
+        <span class="card-title-text">Macro Elasticity Attribution</span>
+        <span class="badge-elasticity">Elasticity Stack</span>
+      </div>
+      <div class="elasticity-stack">
+        <div class="stack-item">
+          <div class="stack-info">
+            <span>ATF Jet Fuel Impact (40% Weight)</span>
+            <strong>+{{ (fuelShockPct * 0.40) | number:'1.2-2' }}%</strong>
+          </div>
+          <div class="progress-track"><div class="progress-fill fuel" [style.width.%]="(fuelShockPct * 0.40 * 3) > 100 ? 100 : (fuelShockPct * 0.40 * 3)"></div></div>
+        </div>
+        <div class="stack-item">
+          <div class="stack-info">
+            <span>UDAN Seasonal Surge (Tier-2/3)</span>
+            <strong>+{{ regionalSurgePct | number:'1.1-1' }}%</strong>
+          </div>
+          <div class="progress-track"><div class="progress-fill surge" [style.width.%]="(regionalSurgePct * 1.5) > 100 ? 100 : (regionalSurgePct * 1.5)"></div></div>
+        </div>
+        <div class="stack-item">
+          <div class="stack-info">
+            <span>Fleet Grounding Elasticity (0.8x)</span>
+            <strong>+{{ (capacityCutPct * 0.8) | number:'1.2-2' }}%</strong>
+          </div>
+          <div class="progress-track"><div class="progress-fill capacity" [style.width.%]="(capacityCutPct * 0.8 * 3) > 100 ? 100 : (capacityCutPct * 0.8 * 3)"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top 5 Most Vulnerable Regional Routes Under This Shock -->
+  <section *ngIf="simulationResult && simulationResult.most_impacted_routes?.length" class="vulnerable-routes-card">
+    <div class="card-header">
+      <div class="header-titles">
+        <h2 class="section-title">Top 5 Most Vulnerable Regional Routes Under This Shock</h2>
+        <p class="section-subtitle">
+          Corridors exhibiting the highest simulated fare spikes and predatory gouging exposure due to low carrier competition and seasonal UDAN inelasticity.
+        </p>
+      </div>
+      <button class="btn-dossier-small" (click)="downloadMoSPIReport()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+        </svg>
+        <span>Export MoSPI Dossier</span>
+      </button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="impact-table">
+        <thead>
+          <tr>
+            <th>Corridor Code</th>
+            <th>City Pair Sector</th>
+            <th>Cluster Tier</th>
+            <th>Pre-Shock Fare (p₀)</th>
+            <th>Simulated Price (p_sim)</th>
+            <th>Net Fare Spike</th>
+            <th>Surge %</th>
+            <th>CPI Basket Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let route of simulationResult.most_impacted_routes; let i = index">
+            <td class="corridor-cell">
+              <span class="rank-num">#{{ i + 1 }}</span>
+              <span class="code-badge">{{ route.corridor }}</span>
+            </td>
+            <td class="route-name-cell">
+              <strong>{{ route.route_name }}</strong>
+            </td>
+            <td>
+              <span class="tier-badge" [class.udan]="route.tier_tag.includes('UDAN')" [class.feeder]="route.tier_tag.includes('Feeder')">
+                {{ route.tier_tag }}
+              </span>
+            </td>
+            <td class="fare-num">₹{{ route.baseline_fare | number:'1.0-0' }}</td>
+            <td class="fare-num simulated">₹{{ route.simulated_fare | number:'1.0-0' }}</td>
+            <td class="fare-spike-cell">
+              <span class="spike-val">+₹{{ route.fare_spike_inr | number:'1.0-0' }}</span>
+            </td>
+            <td>
+              <span class="surge-badge" [class.critical]="route.spike_percentage >= 25" [class.elevated]="route.spike_percentage >= 15 && route.spike_percentage < 25">
+                +{{ route.spike_percentage | number:'1.1-1' }}%
+              </span>
+            </td>
+            <td class="weight-cell">{{ route.weight | number:'1.1-1' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
