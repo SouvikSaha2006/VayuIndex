@@ -22,24 +22,25 @@ In India, headline **Consumer Price Index (CPI)** numbers released by the **Mini
 
 ```mermaid
 flowchart TD
-    subgraph Data Layer
-        A[Carrier Portals / Direct] --> D[Fare Scraper / Ingestion Service]
-        B[OTA Aggregators MakeMyTrip / EaseMyTrip / Yatra] --> D
-        C[Historical DGCA Benchmarks] --> D
+    subgraph Data_Layer ["Data Layer"]
+        A["Carrier Portals (Direct)"] --> D["Fare Scraper / Ingestion Service"]
+        B["OTA Portals (MakeMyTrip / EaseMyTrip / Yatra)"] --> D
+        C["Historical DGCA Benchmarks"] --> D
     end
 
-    subgraph Django Core Engine [Backend: Django 5.1 + DRF]
-        D -->|Bulk Create| E[(SQLite / PostgreSQL)]
-        E --> F[Airport & Route ORM Models]
-        E --> G[FareObservation Ingestion Models]
-        F & G --> H[Laspeyres Index Formulation Engine]
-        H --> I[(DailyCPIIndex Time-Series)]
+    subgraph Django_Engine ["Backend: Django 5.1 + DRF Core Engine"]
+        D -->|Bulk Create| E[("Database: SQLite / PostgreSQL")]
+        E --> F["Airport & Route ORM Models"]
+        E --> G["FareObservation Models"]
+        F --> H["Laspeyres Index Formulation Engine"]
+        G --> H
+        H --> I[("DailyCPIIndex Time-Series")]
         
-        subgraph Specialized Django Services
-            J[Macro Shock Simulation Engine services.py]
-            K[ReportLab MoSPI Policy Dossier Generator pdf_generator.py]
-            L[VayuMitra Conversational AI & Helpline Engine chatbot.py]
-            M[Server-Sent Events SSE Stream Generator views.py]
+        subgraph Django_Services ["Specialized Django Services"]
+            J["Macro Shock Simulation Engine (services.py)"]
+            K["ReportLab MoSPI Policy Dossier (pdf_generator.py)"]
+            L["VayuMitra Conversational AI (chatbot.py)"]
+            M["Server-Sent Events Stream (views.py)"]
         end
         
         H --> J
@@ -48,27 +49,33 @@ flowchart TD
         G --> M
     end
 
-    subgraph REST API & Webhooks
-        N[REST API ViewSets DefaultRouter]
-        O[SSE Live Fare Stream text/event-stream]
-        P[Twilio WhatsApp Webhook TwiML XML]
+    subgraph API_Layer ["REST API & Webhooks"]
+        N["DRF ViewSets (DefaultRouter)"]
+        O["SSE Live Fare Stream (/api/fares/live-stream/)"]
+        P["Twilio WhatsApp Webhook (/api/webhook/whatsapp/)"]
     end
 
-    Django Core Engine --> N
-    Django Core Engine --> O
-    Django Core Engine --> P
+    H --> N
+    J --> N
+    K --> N
+    M --> O
+    L --> P
 
-    subgraph Frontend [Angular 18 Standalone]
-        Q[Live Macro Dashboard Component]
-        R[Corridor Price Finder & Search]
-        S[Laspeyres CPI Methodology & Weights]
-        T[Macroeconomic Policy Sandbox]
-        U[Floating VayuMitra AI Assistant Widget]
+    subgraph Client_Layer ["Frontend: Angular 18 Standalone"]
+        Q["Live Macro Dashboard"]
+        R["Corridor Price Finder"]
+        S["CPI Methodology & Weights"]
+        T["Macro Policy Sandbox"]
+        U["Floating VayuMitra AI Widget"]
     end
 
-    N --> Q & R & S & T & U
+    N --> Q
+    N --> R
+    N --> S
+    N --> T
+    N --> U
     O --> Q
-    P --> V[WhatsApp Mobile Users]
+    P --> V["WhatsApp Mobile Users"]
 ```
 
 ---
