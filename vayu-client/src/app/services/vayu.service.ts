@@ -8,6 +8,9 @@ import {
   FlightRoute,
   IngestionResponse,
   PaginatedResponse,
+  ShockSimulationPayload,
+  ShockSimulationResult,
+  ChatbotResponse,
 } from '../models/vayu.model';
 
 @Injectable({
@@ -173,5 +176,37 @@ export class VayuService {
         eventSource.close();
       };
     });
+  }
+
+  /**
+   * Run Monte-Carlo Macroeconomic Inflation Shock Simulation.
+   * Endpoint: POST /api/index/simulate-shock/
+   */
+  simulateShock(payload: ShockSimulationPayload): Observable<ShockSimulationResult> {
+    return this.http
+      .post<ShockSimulationResult>(`${this.apiUrl}/index/simulate-shock/`, payload)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Fetch generated MoSPI CPI Policy Dossier PDF as a binary Blob.
+   * Endpoint: GET /api/index/export-policy-report/
+   */
+  downloadPolicyReport(): Observable<Blob> {
+    return this.http
+      .get(`${this.apiUrl}/index/export-policy-report/`, {
+        responseType: 'blob',
+      })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Send user message to VayuMitra conversational AI assistant.
+   * Endpoint: POST /api/chatbot/message/
+   */
+  sendChatMessage(message: string): Observable<ChatbotResponse> {
+    return this.http
+      .post<ChatbotResponse>(`${this.apiUrl}/chatbot/message/`, { message })
+      .pipe(catchError(this.handleError));
   }
 }

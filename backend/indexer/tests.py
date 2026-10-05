@@ -635,6 +635,91 @@ class AdvancedEndpointsAPITests(APITestCase):
         self.assertEqual(response.data["total_corridors"], 1)
         self.assertEqual(response.data["latest_index"]["laspeyres_index_value"], 104.17)
 
+    def test_simulate_shock_endpoint(self):
+        # Create a regional UDAN airport and route
+        ixl_apt = Airport.objects.create(iata_code="IXL", city_name="Leh", metro_tier="T3")
+        udan_route = FlightRoute.objects.create(
+            origin=self.del_apt,
+            destination=ixl_apt,
+            passenger_traffic_weight=1.2,
+            base_benchmark_fare=Decimal("6000.00"),
+        )
+        FareObservation.objects.create(
+            route=udan_route,
+            carrier=FareObservation.Carrier.AIRINDIA,
+            source_portal=FareObservation.SourcePortal.DIRECT,
+            observed_price_inr=Decimal("6000.00"),
+            departure_date=timezone.localdate() + timedelta(days=7),
+            advance_booking_days=7,
+        )
+
+        payload = {
+            "fuel_shock_pct": 12.5,
+            "regional_surge_pct": 20.0,
+            "capacity_cut_pct": 5.0,
+        }
+        response = self.client.post("/api/index/simulate-shock/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("baseline_index", response.data)
+        self.assertIn("simulated_index", response.data)
+        self.assertIn("index_delta", response.data)
+        self.assertIn("simulated_mom_inflation", response.data)
+        self.assertIn("most_impacted_routes", response.data)
+
+        # Baseline price for route 1 is 5000, for udan_route is 6000
+        # Simulated price must be strictly higher due to positive shock
+        self.assertGreater(response.data["simulated_index"], response.data["baseline_index"])
+        self.assertGreater(response.data["index_delta"], 0)
+        self.assertGreaterEqual(len(response.data["most_impacted_routes"]), 1)
+
+        # Verify most impacted route properties
+        top_route = response.data["most_impacted_routes"][0]
+        self.assertIn("corridor", top_route)
+        self.assertIn("simulated_fare", top_route)
+        self.assertIn("fare_spike_inr", top_route)
+        self.assertIn("spike_percentage", top_route)
+
+    def test_export_policy_report_endpoint(self):
+        response = self.client.get("/api/index/export-policy-report/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("VayuIndex_MoSPI_Dossier.pdf", response.get("Content-Disposition", ""))
+
+        # Check PDF binary signature %PDF
+        content = b"".join(response.streaming_content) if response.streaming else response.content
+        self.assertTrue(content.startswith(b"%PDF"))
+        self.assertGreater(len(content), 1000)
+
+    def test_chatbot_message_endpoint_route_query(self):
+        response = self.client.post("/api/chatbot/message/", {"message": "DEL to BOM"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("reply", response.data)
+        self.assertIn("DEL", response.data["reply"])
+        self.assertIn("BOM", response.data["reply"])
+        self.assertIn("suggested_chips", response.data)
+        self.assertIn("timestamp", response.data)
+
+    def test_chatbot_message_endpoint_cpi_and_helplines(self):
+        # CPI query
+        cpi_resp = self.client.post("/api/chatbot/message/", {"message": "current inflation rate"}, format="json")
+        self.assertEqual(cpi_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("Laspeyres", cpi_resp.data["reply"])
+
+        # Helpline query
+        help_resp = self.client.post("/api/chatbot/message/", {"message": "airsewa helpline number"}, format="json")
+        self.assertEqual(help_resp.status_code, status.HTTP_200_OK)
+        self.assertIn("1800-11-3006", help_resp.data["reply"])
+        self.assertIn("AirSewa", help_resp.data["reply"])
+
+    def test_whatsapp_webhook_endpoint(self):
+        response = self.client.post("/api/webhook/whatsapp/", {"Body": "price DEL to BOM", "ProfileName": "Rajesh"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("xml", response["Content-Type"])
+        content_str = response.content.decode("utf-8")
+        self.assertIn("<Response>", content_str)
+        self.assertIn("<Message>", content_str)
+        self.assertIn("DEL", content_str)
+
 
 
 

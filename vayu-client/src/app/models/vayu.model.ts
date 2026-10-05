@@ -91,3 +91,64 @@ export interface IngestionResponse {
   records_logged: number;
   updated_index: number;
 }
+
+/**
+ * Macroeconomic Inflation Shock Simulation Payload
+ */
+export interface ShockSimulationPayload {
+  fuel_shock_pct: number;
+  regional_surge_pct: number;
+  capacity_cut_pct: number;
+}
+
+/**
+ * Corridors most impacted by simulation shock
+ */
+export interface ImpactedRoute {
+  route_id: number;
+  corridor: string;
+  route_name: string;
+  origin_code: string;
+  origin_city: string;
+  destination_code: string;
+  destination_city: string;
+  tier_tag: string;
+  is_regional: boolean;
+  baseline_fare: number;
+  current_fare: number;
+  simulated_fare: number;
+  fare_spike_inr: number;
+  spike_percentage: number;
+  weight: number;
+}
+
+/**
+ * Inflation Shock Simulation API Response
+ */
+export interface ShockSimulationResult {
+  baseline_index: number;
+  simulated_index: number;
+  index_delta: number;
+  simulated_mom_inflation: number;
+  most_impacted_routes: ImpactedRoute[];
+}
+
+/**
+ * VayuMitra Conversational Assistant Chat Message
+ */
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'bot';
+  text: string;
+  timestamp: string;
+  chips?: string[];
+}
+
+/**
+ * VayuMitra API Response
+ */
+export interface ChatbotResponse {
+  reply: string;
+  timestamp: string;
+  suggested_chips: string[];
+}

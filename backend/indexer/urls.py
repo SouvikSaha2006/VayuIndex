@@ -16,8 +16,12 @@ from .views import (
     FareObservationViewSet,
     RouteViewSet,
     api_status_view,
+    chatbot_message_view,
+    export_policy_report_view,
     index_summary_view,
     live_fare_stream_view,
+    simulate_shock_view,
+    whatsapp_webhook_view,
 )
 
 router = DefaultRouter()
@@ -30,5 +34,9 @@ urlpatterns: List[URLPattern | URLResolver] = [
     path("", api_status_view, name="api-root-status"),
     path("fares/live-stream/", live_fare_stream_view, name="live-fare-stream"),
     path("index/summary/", index_summary_view, name="index-summary"),
+    path("index/simulate-shock/", simulate_shock_view, name="simulate-shock"),
+    path("index/export-policy-report/", export_policy_report_view, name="export-policy-report"),
+    path("chatbot/message/", chatbot_message_view, name="chatbot-message"),
+    path("webhook/whatsapp/", whatsapp_webhook_view, name="whatsapp-webhook"),
     path("", include(router.urls)),
 ]

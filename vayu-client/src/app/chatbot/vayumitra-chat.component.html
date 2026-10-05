@@ -1,0 +1,161 @@
+<div class="vayumitra-widget-root">
+  <!-- 1. Floating Launcher (When Chat is Closed) -->
+  <div *ngIf="!isOpen" class="chat-launcher-wrapper">
+    <div class="launcher-tooltip" (click)="toggleChat()">
+      <span class="tooltip-badge">AI HELP</span>
+      <span class="tooltip-text">Need Help? Ask <strong>VayuMitra (वायु मित्र)</strong></span>
+    </div>
+
+    <button
+      class="chat-launcher-btn"
+      (click)="toggleChat()"
+      aria-label="Open VayuMitra AI Helpdesk"
+      title="Ask VayuMitra"
+    >
+      <div class="launcher-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <path d="M8 9h8"></path>
+          <path d="M8 13h5"></path>
+        </svg>
+      </div>
+      <span class="status-dot-pulse" title="VayuMitra Online"></span>
+    </button>
+  </div>
+
+  <!-- 2. Chat Modal Dialog (When Chat is Open) -->
+  <div *ngIf="isOpen" class="chat-modal-window">
+    <!-- National Tricolor Header Accent -->
+    <div class="tricolor-accent-strip">
+      <span class="strip saffron"></span>
+      <span class="strip white"></span>
+      <span class="strip green"></span>
+    </div>
+
+    <!-- Official Header -->
+    <div class="modal-header">
+      <div class="header-identity">
+        <div class="emblem-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+          </svg>
+        </div>
+        <div class="header-titles">
+          <div class="bot-name">
+            <span>VayuMitra // वायु मित्र</span>
+          </div>
+          <div class="bot-subtitle">
+            <span class="online-indicator">●</span> Govt Airfare & CPI Public Assistant
+          </div>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <button
+          class="header-btn"
+          (click)="resetChat()"
+          title="Reset Conversation"
+          aria-label="Reset Conversation"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+        </button>
+        <button
+          class="header-btn close-btn"
+          (click)="closeChat()"
+          title="Close Helpdesk"
+          aria-label="Close Chat"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Chat Message History -->
+    <div class="modal-body" #scrollContainer>
+      <div class="messages-list">
+        <div
+          *ngFor="let msg of messages"
+          class="chat-bubble-wrapper"
+          [class.user-align]="msg.sender === 'user'"
+          [class.bot-align]="msg.sender === 'bot'"
+        >
+          <div *ngIf="msg.sender === 'bot'" class="bot-avatar-tiny">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+            </svg>
+          </div>
+
+          <div class="chat-bubble" [class.user-bubble]="msg.sender === 'user'" [class.bot-bubble]="msg.sender === 'bot'">
+            <div class="bubble-content" [innerHTML]="formatMessage(msg.text)"></div>
+            <div class="bubble-meta">
+              <span>{{ msg.timestamp }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Loading Indicator -->
+        <div *ngIf="isLoading" class="chat-bubble-wrapper bot-align">
+          <div class="bot-avatar-tiny">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+            </svg>
+          </div>
+          <div class="chat-bubble bot-bubble typing-bubble">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Action Suggestion Chips -->
+    <div *ngIf="suggestedChips.length > 0" class="chips-row">
+      <button
+        *ngFor="let chip of suggestedChips"
+        class="suggestion-chip"
+        (click)="onChipClick(chip)"
+        [disabled]="isLoading"
+      >
+        {{ chip }}
+      </button>
+    </div>
+
+    <!-- Input Footer Bar -->
+    <div class="modal-footer">
+      <form class="input-form" (ngSubmit)="sendMessage()">
+        <input
+          #chatInput
+          type="text"
+          class="chat-text-input"
+          placeholder="Ask VayuMitra about airfares, CPI, or helplines..."
+          [(ngModel)]="inputText"
+          name="userChatMessage"
+          [disabled]="isLoading"
+          autocomplete="off"
+        />
+        <button
+          type="submit"
+          class="send-btn"
+          [disabled]="!inputText.trim() || isLoading"
+          aria-label="Send message"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+
+      <div class="footer-disclaimer">
+        An official initiative for National Airfare CPI Augmentation • MoSPI/DGCA data integration
+      </div>
+    </div>
+  </div>
+</div>

@@ -12,24 +12,32 @@ import random
 import time
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from xml.sax.saxutils import escape as xml_escape
 
 from django.db.models import Avg, Max, Min, Q, QuerySet
-from django.http import HttpRequest, StreamingHttpResponse
+from django.http import FileResponse, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from .chatbot import process_vayumitra_query
 from .models import Airport, DailyCPIIndex, FareObservation, FlightRoute
+from .pdf_generator import build_mospi_policy_dossier
 from .serializers import (
     AirportSerializer,
     DailyCPIIndexSerializer,
     FareObservationSerializer,
     FlightRouteSerializer,
 )
-from .services import compute_daily_airfare_index, ingest_simulated_scraped_fares
+from .services import (
+    compute_daily_airfare_index,
+    ingest_simulated_scraped_fares,
+    simulate_inflation_shock,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -542,6 +550,174 @@ def index_summary_view(request: HttpRequest) -> Response:
     )
 
 
+@api_view(["POST"])
+def simulate_shock_view(request: Request) -> Response:
+    """
+    POST /api/index/simulate-shock/
+
+    Payload:
+    {
+      "fuel_shock_pct": 12.5,        // percentage increase in Aviation Turbine Fuel
+      "regional_surge_pct": 20.0,    // seasonal surge applied to Tier-2/Tier-3 UDAN routes
+      "capacity_cut_pct": 5.0        // supply drop increasing fares through price elasticity
+    }
+
+    Response:
+    {
+      "baseline_index": 101.53,
+      "simulated_index": 107.82,
+      "index_delta": 6.29,
+      "simulated_mom_inflation": 7.67,
+      "most_impacted_routes": [ ...top 5 corridors with highest fare spikes... ]
+    }
+    """
+    try:
+        data = request.data or {}
+        fuel_shock_pct = float(data.get("fuel_shock_pct", 0.0))
+        regional_surge_pct = float(data.get("regional_surge_pct", 0.0))
+        capacity_cut_pct = float(data.get("capacity_cut_pct", 0.0))
+    except (ValueError, TypeError) as err:
+        return Response(
+            {
+                "status": "error",
+                "message": "Invalid simulation payload. Numeric percentages required for fuel_shock_pct, regional_surge_pct, and capacity_cut_pct.",
+                "details": str(err),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # If database has no routes yet, seed them
+    if not FlightRoute.objects.exists():
+        try:
+            from indexer.management.commands.seed_data import run_seed_data
+            run_seed_data()
+        except Exception as seed_err:
+            logger.warning(f"Auto-seed during simulate shock encountered: {seed_err}")
+
+    simulation_result = simulate_inflation_shock(
+        fuel_shock_pct=fuel_shock_pct,
+        regional_surge_pct=regional_surge_pct,
+        capacity_cut_pct=capacity_cut_pct,
+    )
+
+    return Response(simulation_result, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def export_policy_report_view(request: HttpRequest) -> Union[FileResponse, Response]:
+    """
+    GET /api/index/export-policy-report/
+
+    Generates an official publication-styled MoSPI CPI policy dossier in PDF format:
+      * Header: "GOVERNMENT OF INDIA // MINISTRY OF STATISTICS & PROGRAMME IMPLEMENTATION (MoSPI)"
+      * Sub-title: "AIRFARE VOLATILITY INDEX & CPI TRANSPORT AUGMENTATION DOSSIER"
+      * Metric Summary: Current Laspeyres Index, MoM Inflation, Monitored Routes Count across Tiers 1, 2, and 3.
+      * Table: High-risk price gouging corridors with deviation percentages.
+      * Returns: FileResponse(pdf_buffer, content_type='application/pdf', filename='VayuIndex_MoSPI_Dossier.pdf')
+    """
+    try:
+        # If database has no routes yet, seed them
+        if not FlightRoute.objects.exists():
+            from indexer.management.commands.seed_data import run_seed_data
+            run_seed_data()
+
+        pdf_buffer = build_mospi_policy_dossier()
+
+        response = FileResponse(
+            pdf_buffer,
+            content_type="application/pdf",
+            filename="VayuIndex_MoSPI_Dossier.pdf",
+            as_attachment=True,
+        )
+        response["Content-Disposition"] = 'attachment; filename="VayuIndex_MoSPI_Dossier.pdf"'
+        return response
+    except Exception as exc:
+        logger.exception("Error generating MoSPI policy report PDF")
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to compile MoSPI Policy Dossier PDF.",
+                "details": str(exc),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+def chatbot_message_view(request: Request) -> Response:
+    """
+    POST /api/chatbot/message/
+    VayuMitra Web Widget Conversational API.
+
+    Request Body:
+      { "message": "DEL to BOM" }
+
+    Response:
+      {
+        "reply": "✈️ VayuIndex Official Corridor Report...",
+        "timestamp": "2026-10-06T00:20:00Z",
+        "suggested_chips": ["Current CPI Index", "Govt Helplines", "BOM to BLR"]
+      }
+    """
+    try:
+        user_msg = (request.data.get("message") or "").strip()
+        user_name = request.data.get("user_name")
+        result = process_vayumitra_query(user_msg, user_name=user_name)
+        return Response(result, status=status.HTTP_200_OK)
+    except Exception as exc:
+        logger.exception(f"Error processing VayuMitra message: {exc}")
+        return Response(
+            {
+                "reply": "⚠️ An internal error occurred while retrieving aviation statistics. Please try asking again shortly.",
+                "timestamp": timezone.now().isoformat(),
+                "suggested_chips": ["DEL to BOM", "Current CPI Index", "Govt Helplines"],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@csrf_exempt
+def whatsapp_webhook_view(request: HttpRequest) -> HttpResponse:
+    """
+    POST /api/webhook/whatsapp/
+    Twilio WhatsApp Webhook for VayuMitra Public Aviation Helpdesk.
+
+    Parses incoming Twilio WhatsApp payload ('Body' and 'ProfileName'),
+    invokes the VayuMitra knowledge engine, and returns standard TwiML XML.
+    """
+    if request.method not in ("POST", "GET"):
+        return HttpResponse("Method not allowed", status=405)
+
+    # Twilio sends form data in POST
+    message = request.POST.get("Body") or request.GET.get("Body") or ""
+    if not message and hasattr(request, "body") and request.body:
+        try:
+            import json
+            parsed = json.loads(request.body.decode("utf-8"))
+            message = parsed.get("Body") or parsed.get("message") or ""
+        except Exception:
+            pass
+
+    sender_name = request.POST.get("ProfileName") or None
+    result = process_vayumitra_query(message, user_name=sender_name)
+    reply_text = result.get("reply", "")
+
+    # Try using twilio library if available, otherwise construct standard TwiML XML
+    try:
+        from twilio.twiml.messaging_response import MessagingResponse
+        twiml_resp = MessagingResponse()
+        twiml_resp.message(reply_text)
+        return HttpResponse(str(twiml_resp), content_type="application/xml")
+    except ImportError:
+        xml_content = (
+            f'<?xml version="1.0" encoding="UTF-8"?>\n'
+            f'<Response>\n'
+            f'    <Message>{xml_escape(reply_text)}</Message>\n'
+            f'</Response>'
+        )
+        return HttpResponse(xml_content, content_type="application/xml")
+
+
 @api_view(["GET"])
 def api_status_view(request: Request) -> Response:
     """API Root discovery and status endpoint."""
@@ -561,6 +737,10 @@ def api_status_view(request: Request) -> Response:
                 "cpi_indices": "/api/cpi-indices/",
                 "cpi_indices_latest": "/api/cpi-indices/latest/",
                 "index_summary": "/api/index/summary/",
+                "simulate_shock": "/api/index/simulate-shock/",
+                "export_policy_report": "/api/index/export-policy-report/",
+                "chatbot_message": "/api/chatbot/message/",
+                "whatsapp_webhook": "/api/webhook/whatsapp/",
             },
         }
     )
